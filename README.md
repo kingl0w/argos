@@ -82,18 +82,18 @@ The build is deterministic — rebuilding from the same source produces byte-ide
 |-----------------------|-------------------------------------------|----------------------------------------------------|
 | Runtime               | Hosted service, proprietary               | Claude Code subagents, local                       |
 | Spec format           | Opaque to user                            | Plain markdown in `.specs/`, git-tracked          |
-| Orchestration         | Single planner/executor                   | Four specialized subagents, explicit handoff       |
+| Orchestration         | Single planner/executor                   | Four specialized agents, explicit handoff          |
 | Steering              | Implicit, model-driven                    | Manual `/steer` on `CHAOS_BLOCKED` only           |
 | Source of truth       | Platform state                            | `STATE.md` + git                                   |
 | Extensibility         | Vendor roadmap                            | Fork the template, edit the agents                 |
-| Cost model            | SaaS subscription                         | Your own Anthropic API usage                       |
-| Lock-in               | High — specs live in their system         | None — delete `.claude/` and you still have code  |
+| Cost model            | SaaS subscription                         | Your own model-provider API usage                  |
+| Lock-in               | High — specs live in their system         | None — delete the harness directories and you still have code |
 
 Argos is worse at: onboarding polish, hosted dashboards, multi-user review UI. Traycer is worse at: running offline, being inspected, being forked.
 
 ## Pairing with Impeccable
 
-For frontend work, Argos pairs cleanly with [Impeccable](https://github.com/pbakaus/impeccable) — a design-quality skill suite (`/polish`, `/typeset`, `/audit`, `/harden`, etc.) that the coder subagent can invoke mid-ticket. Suggested split:
+For frontend work, Argos pairs cleanly with [Impeccable](https://github.com/pbakaus/impeccable) — a design-quality skill suite (`/polish`, `/typeset`, `/audit`, `/harden`, etc.) that the coder agent can invoke mid-ticket. Suggested split:
 
 - **Argos** owns *what to build* (tickets, plan, verification).
 - **Impeccable** owns *how it looks and feels* (typography, spacing, motion, a11y).
