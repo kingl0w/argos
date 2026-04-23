@@ -1,13 +1,13 @@
 # Argos
 
-Spec-driven outer-loop orchestration for Claude Code. An open-source analogue to Traycer's Bart mode, built as a thin scaffold over Claude Code's native subagents, slash commands, and hooks — no separate runtime, no proprietary service.
+Spec-driven outer-loop orchestration for AI coding agents. An open-source analogue to Traycer's Bart mode, built as a thin scaffold over the native agents, slash commands, and hooks of your harness — no separate runtime, no proprietary service. Primary tested target: Claude Code. Experimental support for Cursor, Codex CLI, and Gemini CLI (see [Supported AI coding harnesses](#supported-ai-coding-harnesses)).
 
-Argos is opinionated: specs are the source of truth, a ticket moves through a fixed loop of specialized subagents, and the human steers only when plan and reality disagree.
+Argos is opinionated: specs are the source of truth, a ticket moves through a fixed loop of specialized agents, and the human steers only when plan and reality disagree.
 
 ## What Argos is
 
-- A directory layout (`.specs/`, `.claude/agents/`, `.claude/commands/`) plus a methodology document (`ARGOS.md`) and operating rules (`CLAUDE.md`).
-- Four Claude Code subagents — **planner**, **coder**, **watchdog**, **verifier** — each with a narrow job and its own allowed-tools set.
+- A directory layout (`.specs/`, plus per-harness `.claude/`, `.cursor/`, `.codex/`, `.gemini/` generated from `source/`) plus a methodology document (`ARGOS.md`) and operating rules (`ARGOS-RULES.md`, mirrored to `CLAUDE.md` and `AGENTS.md` at build time).
+- Four agents — **planner**, **coder**, **watchdog**, **verifier** — each with a narrow job and its own allowed-tools set.
 - A small set of slash commands (`/new-ticket`, `/next`, `/steer`, `/ask`) that drive the loop.
 - CI hooks (`spec-lint`) that fail a PR if `.specs/STATE.md` is stale, if a ticket lacks acceptance criteria, or if an ADR is referenced but missing.
 
@@ -57,17 +57,24 @@ A full first cycle — from init to first merged ticket — should take under 30
 
 ## Supported AI coding harnesses
 
-Argos v0.4 supports four harnesses from a single source:
+Argos v0.4 builds harness-specific output from a single `source/` directory. Not all harnesses are equally tested.
 
-- Claude Code (`.claude/`)
-- Cursor (`.cursor/`)
-- Codex CLI (`.codex/`)
-- Gemini CLI (`.gemini/`)
+| Harness     | Status       | Notes                                                      |
+|-------------|--------------|------------------------------------------------------------|
+| Claude Code | Tested       | Primary target. Full loop validated end to end.            |
+| Cursor      | Experimental | Files generated under `.cursor/`. Not yet tested in-tool.  |
+| Codex CLI   | Experimental | Files generated under `.codex/`. Not yet tested in-tool.   |
+| Gemini CLI  | Experimental | Files generated under `.gemini/`. Not yet tested in-tool.  |
 
-All harness directories are built from `source/` and committed to the
-repo, so "Use this template" works instantly with any supported tool.
+All harness directories are committed to the repo, so "Use this template" works instantly with Claude Code and provides a starting point for the others. Per-harness frontmatter tuning (Cursor `.mdc` fields, Codex `$ARGNAME` placeholders, Gemini minimal skills format) is Phase 2 work.
 
-To regenerate after editing source/: `bash scripts/build.sh`
+To regenerate after editing `source/`:
+
+```bash
+bash scripts/build.sh
+```
+
+The build is deterministic — rebuilding from the same source produces byte-identical output.
 
 ## Argos vs Traycer Bart
 
@@ -96,27 +103,44 @@ Install Impeccable alongside Argos; the coder agent's allowed-tools list already
 ## Directory layout
 
 ```
-.
-├── .claude/
-│   ├── agents/         # planner, coder, watchdog, verifier subagent definitions
-│   └── commands/       # /new-ticket, /next, /steer, /ask
-├── .specs/
-│   ├── PRD.md              # product-level intent (human-written)
-│   ├── ARCHITECTURE.md     # structural decisions (human-written, updated via ADRs)
-│   ├── STATE.md            # current focus / queue / drift (agent-written, human-reviewed)
-│   ├── tickets/            # one markdown file per ticket, the unit of work
-│   └── decisions/          # ADRs, numbered, immutable once decided
-├── .github/
-│   ├── ISSUE_TEMPLATE/     # mirrors ticket shape so GitHub Issues = tickets view
-│   └── workflows/          # spec-lint CI, ticket↔issue sync
+argos/
+├── source/                      # Canonical agents + commands (edit here)
+│   ├── agents/                    # planner, coder, watchdog, verifier
+│   └── commands/                  # next, steer, ask, new-ticket, reconcile
+├── .claude/                     # Generated: Claude Code
+│   ├── agents/
+│   └── commands/
+├── .cursor/                     # Generated: Cursor (experimental)
+│   ├── rules/
+│   └── commands/
+├── .codex/                      # Generated: Codex CLI (experimental)
+│   ├── agents/
+│   └── prompts/
+├── .gemini/                     # Generated: Gemini CLI (experimental)
+│   └── skills/
+├── .github/                     # Issue templates, spec-lint CI workflow
+│   ├── ISSUE_TEMPLATE/
+│   └── workflows/
+├── .specs/                      # Living spec (PRD, architecture, state, tickets, ADRs)
 ├── scripts/
-│   └── argos-init.sh       # one-shot template initializer
-├── ARGOS.md            # methodology: why this shape, what it optimizes for
-├── CLAUDE.md           # operating rules Claude Code reads on every session
-├── LICENSE
-└── README.md
+│   ├── argos-init.sh              # One-time project setup
+│   ├── argos-status.sh            # Inspect current state
+│   ├── argos-sync.sh              # Bidirectional GitHub Issues mirror
+│   ├── argos-chaos-probe.sh       # Mechanical chaos checks (called by watchdog)
+│   └── build.sh                   # Regenerate harness outputs from source/
+├── ARGOS-RULES.md               # Source of truth for project rules
+├── CLAUDE.md                    # Generated from ARGOS-RULES.md (Claude Code reads this)
+├── AGENTS.md                    # Generated from ARGOS-RULES.md (Codex family convention)
+└── ARGOS.md                     # Methodology doc
 ```
 
-## Status
+Edit `source/` and re-run `scripts/build.sh` to regenerate the per-harness directories. `.specs/` (PRD, ARCHITECTURE.md, STATE.md, tickets, decisions/ADRs) is the project's living spec — written by humans and the verifier, never by the coder.
 
-v0.1. Expect rough edges in the planner (under-specs tests), the coder (over-refactors fresh repos), and the verifier (can claim tests pass without running them). See `ARGOS.md` for the known-weakness list and what to watch.
+## Roadmap
+
+- v0.4 Phase 1 (current): multi-harness build system with Claude Code fully tested
+- v0.4 Phase 2: per-harness frontmatter tuning and in-tool validation for Cursor, Codex CLI, Gemini CLI
+- v0.4 Phase 3: README and docs sweep, terminology neutralization ("subagent" → "agent" where appropriate)
+- v0.5: real-world hardening based on dogfooding on production projects
+
+File a GitHub issue if you hit friction on any harness — the experimental ones in particular need real usage to mature.
