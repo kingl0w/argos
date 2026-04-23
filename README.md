@@ -1,6 +1,6 @@
 # Argos
 
-Spec-driven outer-loop orchestration for AI coding agents. An open-source analogue to Traycer's Bart mode, built as a thin scaffold over the native agents, slash commands, and hooks of your harness — no separate runtime, no proprietary service. Primary tested target: Claude Code. Experimental support for Cursor, Codex CLI, and Gemini CLI (see [Supported AI coding harnesses](#supported-ai-coding-harnesses)).
+Spec driven outer loop orchestration for AI coding agents. An open source analogue to Traycer's Bart mode, built as a thin scaffold over the native agents, slash commands, and hooks of your harness — no separate runtime, no proprietary service. Primary tested target: Claude Code. Experimental support for Cursor, Codex CLI, and Gemini CLI (see [Supported AI coding harnesses](#supported-ai-coding-harnesses)).
 
 Argos is opinionated: specs are the source of truth, a ticket moves through a fixed loop of specialized agents, and the human steers only when plan and reality disagree.
 
