@@ -13,9 +13,7 @@ _One sentence. What is the single most important thing in flight right now? If y
 
 Tickets ready to be worked, in rough priority order. The planner picks the top one on `/next` unless told otherwise.
 
-- [ ] {{PREFIX}}-001 — _title_
-- [ ] {{PREFIX}}-002 — _title_
-- [ ] {{PREFIX}}-003 — _title_
+- _none yet — use `/new-ticket` to add one_
 
 ## In progress
 
