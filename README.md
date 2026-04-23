@@ -55,6 +55,20 @@ Retry caps: planner→coder retries once on a flagged plan; verifier never retri
 
 A full first cycle — from init to first merged ticket — should take under 30 minutes on a fresh repo.
 
+## Supported AI coding harnesses
+
+Argos v0.4 supports four harnesses from a single source:
+
+- Claude Code (`.claude/`)
+- Cursor (`.cursor/`)
+- Codex CLI (`.codex/`)
+- Gemini CLI (`.gemini/`)
+
+All harness directories are built from `source/` and committed to the
+repo, so "Use this template" works instantly with any supported tool.
+
+To regenerate after editing source/: `bash scripts/build.sh`
+
 ## Argos vs Traycer Bart
 
 | Dimension             | Traycer Bart                              | Argos                                              |
