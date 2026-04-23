@@ -1,0 +1,64 @@
+name: Argos Ticket
+description: File a ticket that will be mirrored into .specs/tickets/ and run through the Argos loop.
+title: "[PREFIX-NNN] "
+labels: ["argos-ticket"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form creates an Argos ticket. The on-disk markdown file in `.specs/tickets/` is the source of truth — this issue is a view, kept in sync by CI.
+
+        Keep it short. The **planner** subagent will refine acceptance criteria and draft the implementation plan when you run `/next`.
+
+  - type: input
+    id: ticket_id
+    attributes:
+      label: Ticket ID
+      description: Format is PREFIX-NNN (e.g. ACME-007). Match the prefix configured during `argos-init.sh`. Leave blank to let `/new-ticket` assign the next number.
+      placeholder: ACME-001
+    validations:
+      required: false
+
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: One or two sentences. What changes in the world after this ticket merges? Write as an outcome, not a task list.
+      placeholder: Users can reset their password via emailed link within 5 minutes of request.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: Adjacent work you explicitly are not doing in this ticket. Protects scope.
+      placeholder: |
+        - No SSO integration in this ticket
+        - No password strength UI changes
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria (draft)
+      description: Rough checkboxes. The planner will turn these into concrete, testable criteria.
+      value: |
+        - [ ] Behavior the verifier can check by running a command and reading output.
+        - [ ] Edge case that must be handled (error path, empty input, boundary).
+        - [ ] Existing behavior X still works (regression guard).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 — blocking
+        - P1 — next up
+        - P2 — when we get to it
+      default: 2
+    validations:
+      required: true

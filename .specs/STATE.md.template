@@ -1,0 +1,42 @@
+# {{PROJECT}} — State
+
+**Last updated:** {{DATE}}
+**Updated by:** _verifier (automated) or human (on hotfix)_
+
+This file is the project's short-term memory. Every subagent reads it first. Only the verifier writes it during the loop; humans write it on out-of-loop edits.
+
+## Current focus
+
+_One sentence. What is the single most important thing in flight right now? If you can't fit it in one sentence, you're focused on too many things._
+
+## Queue
+
+Tickets ready to be worked, in rough priority order. The planner picks the top one on `/next` unless told otherwise.
+
+- [ ] {{PREFIX}}-001 — _title_
+- [ ] {{PREFIX}}-002 — _title_
+- [ ] {{PREFIX}}-003 — _title_
+
+## In progress
+
+Tickets currently being executed by the loop or paused mid-cycle. At most one per operator.
+
+- [ ] _none_
+
+## Done this cycle
+
+Tickets completed since the last cycle close. Cleared when you close a cycle (weekly, by default). Append-only within a cycle.
+
+- _none yet_
+
+## Open decisions
+
+Product or architecture calls that are pending and block one or more queued tickets. Each becomes an ADR once decided.
+
+- _none_
+
+## Known drift
+
+Places the code and `.specs/ARCHITECTURE.md` disagree. Each entry should name the file or module, one sentence on the mismatch, and a disposition (fix code, update docs, file ADR).
+
+- _none_

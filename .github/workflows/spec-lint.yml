@@ -1,0 +1,55 @@
+name: spec-lint
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  state-md-sync:
+    name: STATE.md must move with code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect stale STATE.md
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if [ -z "$changed" ]; then
+            echo "No files changed. Passing."
+            exit 0
+          fi
+
+          echo "Files changed in this PR:"
+          echo "$changed" | sed 's/^/  /'
+          echo
+
+          # Files we consider "code" — anything outside .specs/, .github/, and docs.
+          code_changed=$(echo "$changed" | grep -Ev '^(\.specs/|\.github/|docs/|README\.md$|ARGOS\.md$|CLAUDE\.md$|LICENSE$|\.gitignore$)' || true)
+
+          if [ -z "$code_changed" ]; then
+            echo "No code files changed (spec/docs-only PR). Passing."
+            exit 0
+          fi
+
+          state_changed=$(echo "$changed" | grep -x '.specs/STATE.md' || true)
+
+          if [ -z "$state_changed" ]; then
+            echo "::error::Argos requires living spec in sync with code. Update .specs/STATE.md."
+            echo
+            echo "Code files changed:"
+            echo "$code_changed" | sed 's/^/  /'
+            echo
+            echo "But .specs/STATE.md was not updated in this PR."
+            echo "Move the ticket to 'Done this cycle', record any drift, and commit STATE.md."
+            exit 1
+          fi
+
+          echo "STATE.md was updated alongside code. Passing."

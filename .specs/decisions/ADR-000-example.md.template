@@ -1,0 +1,69 @@
+# ADR-000 — Example: choosing a persistence layer for {{PROJECT}}
+
+**Date:** {{DATE}}
+**Status:** Proposed
+**Deciders:** _you_
+
+This is the template ADR. Copy it to `ADR-NNN-short-slug.md` (next unused number), fill in the sections, and flip Status to Accepted once the decision lands. Once Accepted, an ADR is immutable — supersede it with a new ADR rather than editing.
+
+## Context
+
+_The situation that requires a decision. Include: what problem is being solved, what constraints apply, what has already been ruled out and why. Two to four paragraphs. Someone reading this a year from now should be able to reconstruct the decision without asking you._
+
+This example ADR imagines that {{PROJECT}} needs to persist state between runs and the team is choosing between three reasonable options. The decision is non-trivial because the project's long-term shape — does it stay single-node? does it need search? does it need transactions? — is not yet settled.
+
+## Options
+
+### Option A — SQLite (embedded, file-backed)
+
+**Pros:**
+- Zero operational overhead; ships inside the binary.
+- Transactions, indexes, and SQL familiarity.
+- Trivial to back up (copy the file).
+
+**Cons:**
+- Single-writer concurrency model limits future horizontal scaling.
+- No built-in replication; HA story is nontrivial.
+- Schema migrations in production require care.
+
+### Option B — Postgres (managed, networked)
+
+**Pros:**
+- Full-featured SQL, strong concurrency, proven at scale.
+- Managed offerings handle backup, failover, point-in-time recovery.
+- Rich ecosystem (extensions, tooling, observability).
+
+**Cons:**
+- Requires running a service; adds deploy complexity for a v1.
+- Cost floor even at zero traffic.
+- Over-engineered for the current load profile.
+
+### Option C — JSON files on disk
+
+**Pros:**
+- Simplest possible thing.
+- Trivially inspectable, diffable, version-controllable.
+- Zero dependencies.
+
+**Cons:**
+- No concurrency guarantees; corruption on concurrent writes.
+- No query capability beyond "load the whole file."
+- Will need to be thrown away the moment a second process touches the data.
+
+## Recommendation
+
+_The author's recommendation, with a one-sentence justification that references the Context. This is not yet The Decision — the user gets to accept, reject, or pick a different option._
+
+For a single-node v1 with low write concurrency and an unclear scaling trajectory, **Option A (SQLite)** is the recommendation: it gets you transactions and SQL without the operational cost of Postgres, and it's easy to migrate off if Option B becomes necessary.
+
+## Decision
+
+_Filled in by the user. Record the chosen option and any modifications. Date the decision. Once this section is filled and Status is Accepted, the ADR is frozen._
+
+_To be filled by user._
+
+## Consequences
+
+_What changes as a result of this decision? What becomes easier? What becomes harder? What is now off the table? What new work is implied (schema design, migration tooling, a new dependency in the manifest)? This section is the contract with future-you._
+
+- _To be filled once Decision is made._
