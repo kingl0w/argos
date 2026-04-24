@@ -56,7 +56,7 @@ Things that must be true across all tickets. Violating one of these requires an 
 - **Deploy:** _…_
 - **CI:** _…_
 
-Each choice should have an ADR in `.specs/decisions/` if it wasn't obvious. "Why Postgres" doesn't need one if the team has always used Postgres. "Why SurrealDB" does.
+Each choice should have an ADR in `argos/specs/decisions/` if it wasn't obvious. "Why Postgres" doesn't need one if the team has always used Postgres. "Why SurrealDB" does.
 
 ## What this architecture deliberately does not support
 

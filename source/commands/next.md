@@ -6,7 +6,7 @@ argument-hint: "[ticket-id] [--yolo]"
 Run the Argos outer loop: plan → code → watchdog → verify → update, with auto-recovery.
 
 Steps:
-1. Read .specs/STATE.md. If $1 provided use that ticket. Else pick first from ## Queue. If queue empty and no arg, ask user what to build (use /new-ticket).
+1. Read argos/specs/STATE.md. If $1 provided use that ticket. Else pick first from ## Queue. If queue empty and no arg, ask user what to build (use /new-ticket).
 2. Read ticket file. If no ## Plan section or Open questions unresolved, invoke planner subagent.
 3. Show plan. If --yolo, skip confirm. Else ask "Proceed to code? (y/n/edit)".
 4. Invoke coder subagent.

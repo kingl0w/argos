@@ -13,7 +13,7 @@ A single "do the ticket" agent is simpler to invoke but worse at every sub-task:
 Splitting the work forces an explicit interface between phases:
 
 - **planner** reads specs, writes a plan. It does not see diffs. It cannot be seduced by "while I'm in here…".
-- **coder** reads the plan and the code. It does not see `.specs/` except the one ticket; it does not write `STATE.md`. Its job is "make the plan true."
+- **coder** reads the plan and the code. It does not see `argos/specs/` except the one ticket; it does not write `STATE.md`. Its job is "make the plan true."
 - **watchdog** reads the plan and the diff — nothing else. It is cheap, narrow, and adversarial. It exists because a coder will happily ship a diff that doesn't match the plan if nobody checks.
 - **verifier** runs tests and acceptance criteria in a fresh subagent context, so "tests pass" is not a claim the coder gets to make about itself.
 
@@ -54,7 +54,7 @@ The one exception: a `CHAOS_BLOCKED` from the watchdog on a *formatting* or *tri
 
 Linear is better for teams: keyboard-first, typed fields, a real state machine. For a solo operator running Argos, it has two problems:
 
-- It's a second source of truth. The ticket in `.specs/tickets/` and the Linear issue drift; resolving drift becomes its own chore.
+- It's a second source of truth. The ticket in `argos/specs/tickets/` and the Linear issue drift; resolving drift becomes its own chore.
 - The agents can't see it without an MCP connector, and the connector adds latency + auth surface for no benefit when the ticket is already on disk.
 
 GitHub Issues are strictly a *view* of the on-disk ticket in Argos. A CI job renders the markdown ticket into an issue body; closing the issue closes the ticket (via a commit hook that flips Status to Done). If you grow into a team, swap the view layer — the tickets stay put.

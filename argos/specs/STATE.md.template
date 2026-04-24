@@ -35,6 +35,6 @@ Product or architecture calls that are pending and block one or more queued tick
 
 ## Known drift
 
-Places the code and `.specs/ARCHITECTURE.md` disagree. Each entry should name the file or module, one sentence on the mismatch, and a disposition (fix code, update docs, file ADR).
+Places the code and `argos/specs/ARCHITECTURE.md` disagree. Each entry should name the file or module, one sentence on the mismatch, and a disposition (fix code, update docs, file ADR).
 
 - _none_

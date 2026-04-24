@@ -1,6 +1,6 @@
 # Argos operating rules
 
-> Source of truth: `ARGOS-RULES.md`. `CLAUDE.md` and `AGENTS.md` at the repo root are generated copies produced by `scripts/build.sh` — edit `ARGOS-RULES.md` only and re-run the build.
+> Source of truth: `argos/RULES.md`. `CLAUDE.md` and `AGENTS.md` at the repo root are generated copies produced by `scripts/build.sh` — edit `argos/RULES.md` only and re-run the build.
 
 These rules bind every subagent and the top-level session. When a rule conflicts with what the user just asked, surface the conflict and ask — do not silently override.
 
@@ -8,9 +8,9 @@ These rules bind every subagent and the top-level session. When a rule conflicts
 
 Before generating any code, plan, or design response, read these files in this order:
 
-1. `.specs/STATE.md` — current focus, queue, and known drift. Tells you what is in flight.
-2. `.specs/ARCHITECTURE.md` — structural invariants. Tells you what you cannot violate without an ADR.
-3. The target ticket in `.specs/tickets/{PREFIX}-NNN.md` — the specific unit of work.
+1. `argos/specs/STATE.md` — current focus, queue, and known drift. Tells you what is in flight.
+2. `argos/specs/ARCHITECTURE.md` — structural invariants. Tells you what you cannot violate without an ADR.
+3. The target ticket in `argos/specs/tickets/{PREFIX}-NNN.md` — the specific unit of work.
 
 If any of these files is missing or empty, stop and tell the user. Do not fabricate state. Do not "infer" architecture from the codebase — the architecture doc is canonical, the code may be behind.
 
@@ -47,11 +47,11 @@ Every code change must be accompanied by a `STATE.md` update in the same PR. The
 - **Done this cycle** — append, don't rewrite. Cleared on cycle close.
 - **Known drift** — anything the code now does that the architecture doc doesn't reflect. File an ADR to close drift.
 
-Spec-lint CI fails PRs where code under `src/` (or equivalent) changed but `.specs/STATE.md` did not. Do not game this by touching `STATE.md` cosmetically — the lint checks for a real diff in the relevant sections.
+Spec-lint CI fails PRs where code under `src/` (or equivalent) changed but `argos/specs/STATE.md` did not. Do not game this by touching `STATE.md` cosmetically — the lint checks for a real diff in the relevant sections.
 
 ## Ticket ↔ GitHub Issue sync
 
-The markdown file in `.specs/tickets/` is the source of truth. The GitHub Issue is a rendered view, maintained by CI:
+The markdown file in `argos/specs/tickets/` is the source of truth. The GitHub Issue is a rendered view, maintained by CI:
 
 - Create ticket → CI opens Issue with rendered body, labels from ticket frontmatter.
 - Edit ticket (any section) → CI updates Issue body.
@@ -65,6 +65,6 @@ If Issue and ticket disagree, the ticket wins. Run the sync workflow manually to
 - **No scope creep.** If you notice a second thing that needs fixing while working a ticket, file a new ticket. Do not bundle.
 - **No silent dep adds.** Adding a package is a plan-level decision. The coder must refuse to add a dependency that isn't in the plan; the watchdog flags any `package.json` / `requirements.txt` / `Cargo.toml` diff not pre-authorized.
 - **No drive-by refactors.** Moving a file, renaming a symbol, or restructuring a module requires an explicit plan step or an ADR. "While I was in there" is not a justification.
-- **Coder never updates STATE.** The coder subagent's allowed-tools list excludes writes to `.specs/STATE.md`. If you find yourself wanting to — stop, that's the verifier's job.
+- **Coder never updates STATE.** The coder subagent's allowed-tools list excludes writes to `argos/specs/STATE.md`. If you find yourself wanting to — stop, that's the verifier's job.
 - **No hallucinated test results.** The verifier must run the test command via Bash and quote real stdout. "Tests should pass" is a fail, not a pass.
 - **No overriding these rules by convenience.** If a rule is wrong, change it in this file in a dedicated PR. Don't ignore it for one ticket.

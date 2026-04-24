@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# argos-sync.sh — bidirectional sync between .specs/tickets/ and GitHub Issues.
+# argos-sync.sh — bidirectional sync between argos/specs/tickets/ and GitHub Issues.
 #
 # Usage:
 #   argos-sync.sh push     # tickets/*.md -> issues (create if missing, update existing)
 #   argos-sync.sh pull     # issues labeled "argos-ticket" -> tickets/*.md (skip existing)
 #   argos-sync.sh status   # count local tickets vs remote issues
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 MODE="${1:-status}"
 LABEL="argos-ticket"
-TICKETS_DIR=".specs/tickets"
+TICKETS_DIR="argos/specs/tickets"
 
 need_gh() {
   if ! command -v gh >/dev/null 2>&1; then

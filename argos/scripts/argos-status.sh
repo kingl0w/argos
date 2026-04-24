@@ -4,25 +4,25 @@ set -euo pipefail
 # argos-status.sh — at-a-glance view of an Argos project.
 # Prints STATE.md, then a ticket status table, then pending (Proposed) ADRs.
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 hr() { printf '%s\n' "------------------------------------------------------------"; }
 
 echo "=== STATE.md ==="
-if [ -f .specs/STATE.md ]; then
-  cat .specs/STATE.md
+if [ -f argos/specs/STATE.md ]; then
+  cat argos/specs/STATE.md
 else
-  echo "(no .specs/STATE.md — run scripts/argos-init.sh)"
+  echo "(no argos/specs/STATE.md — run argos/scripts/argos-init.sh)"
 fi
 
 echo
 hr
 echo "=== Tickets ==="
-if [ -d .specs/tickets ]; then
+if [ -d argos/specs/tickets ]; then
   printf '%-20s  %-12s  %s\n' "ID" "STATUS" "TITLE"
   printf '%-20s  %-12s  %s\n' "--" "------" "-----"
-  for f in .specs/tickets/*.md; do
+  for f in argos/specs/tickets/*.md; do
     [ -f "$f" ] || continue
     case "$f" in *.template) continue ;; esac
     id=$(basename "$f" .md | grep -oE '^[A-Z]+-[0-9]+' || echo "?")
@@ -33,15 +33,15 @@ if [ -d .specs/tickets ]; then
     printf '%-20s  %-12s  %s\n' "$id" "$status" "$title"
   done
 else
-  echo "(no .specs/tickets/ directory)"
+  echo "(no argos/specs/tickets/ directory)"
 fi
 
 echo
 hr
 echo "=== Proposed ADRs ==="
 found=0
-if [ -d .specs/decisions ]; then
-  for f in .specs/decisions/ADR-*.md; do
+if [ -d argos/specs/decisions ]; then
+  for f in argos/specs/decisions/ADR-*.md; do
     [ -f "$f" ] || continue
     case "$f" in *.template) continue ;; esac
     status=$(grep -m1 -E '^\*\*Status:\*\*' "$f" 2>/dev/null \

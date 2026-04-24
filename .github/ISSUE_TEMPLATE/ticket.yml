@@ -1,12 +1,12 @@
 name: Argos Ticket
-description: File a ticket that will be mirrored into .specs/tickets/ and run through the Argos loop.
+description: File a ticket that will be mirrored into argos/specs/tickets/ and run through the Argos loop.
 title: "[PREFIX-NNN] "
 labels: ["argos-ticket"]
 body:
   - type: markdown
     attributes:
       value: |
-        This form creates an Argos ticket. The on-disk markdown file in `.specs/tickets/` is the source of truth — this issue is a view, kept in sync by CI.
+        This form creates an Argos ticket. The on-disk markdown file in `argos/specs/tickets/` is the source of truth — this issue is a view, kept in sync by CI.
 
         Keep it short. The **planner** subagent will refine acceptance criteria and draft the implementation plan when you run `/next`.
 

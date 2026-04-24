@@ -63,8 +63,8 @@ build_gemini() {
 # ---- Root rules files ----
 build_rules() {
   echo "-> root rules: CLAUDE.md, AGENTS.md"
-  cp "$ROOT/ARGOS-RULES.md" "$ROOT/CLAUDE.md"
-  cp "$ROOT/ARGOS-RULES.md" "$ROOT/AGENTS.md"
+  cp "$ROOT/argos/RULES.md" "$ROOT/CLAUDE.md"
+  cp "$ROOT/argos/RULES.md" "$ROOT/AGENTS.md"
 }
 
 build_claude_code

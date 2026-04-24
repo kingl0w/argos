@@ -3,19 +3,19 @@ set -euo pipefail
 
 # argos-init.sh — one-shot template initializer for Argos.
 # Replaces {{PROJECT}}, {{PREFIX}}, {{DESC}}, {{DATE}} placeholders in every
-# .specs/**/*.template file, writes the result to the same path without the
+# argos/specs/**/*.template file, writes the result to the same path without the
 # .template suffix, renames EXAMPLE-001.md → <PREFIX>-001.md, drops a
-# .argos-initialized sentinel so it won't re-run.
+# .initialized sentinel so it won't re-run.
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-SENTINEL=".specs/.argos-initialized"
-STATE_FILE=".specs/STATE.md"
+SENTINEL="argos/.initialized"
+STATE_FILE="argos/specs/STATE.md"
 
 if [ -f "$SENTINEL" ]; then
   echo "argos: already initialized ($(cat "$SENTINEL" 2>/dev/null | head -n1))"
-  echo "       delete $SENTINEL to re-run, or edit .specs/ files directly."
+  echo "       delete $SENTINEL to re-run, or edit argos/specs/ files directly."
   exit 0
 fi
 
@@ -25,9 +25,9 @@ if [ -f "$STATE_FILE" ] && ! grep -q '{{' "$STATE_FILE" 2>/dev/null; then
   exit 1
 fi
 
-templates=$(find .specs -type f -name '*.template' 2>/dev/null)
+templates=$(find argos/specs -type f -name '*.template' 2>/dev/null)
 if [ -z "$templates" ]; then
-  echo "argos: no .template files found under .specs/ — nothing to do."
+  echo "argos: no .template files found under argos/specs/ — nothing to do."
   exit 1
 fi
 
@@ -82,8 +82,8 @@ while IFS= read -r tpl; do
 done <<< "$templates"
 
 # Rename the example ticket
-example_src=".specs/tickets/EXAMPLE-001.md"
-example_dst=".specs/tickets/${PREFIX}-001.md"
+example_src="argos/specs/tickets/EXAMPLE-001.md"
+example_dst="argos/specs/tickets/${PREFIX}-001.md"
 if [ -f "$example_src" ]; then
   mv "$example_src" "$example_dst"
   echo "  renamed:  $example_src -> $example_dst"
@@ -101,8 +101,8 @@ cat <<EOF
 Argos initialized.
 
 Next steps:
-  1. Edit .specs/PRD.md — fill in problem, goals, non-goals.
-  2. Edit .specs/ARCHITECTURE.md — describe system shape and invariants.
+  1. Edit argos/specs/PRD.md — fill in problem, goals, non-goals.
+  2. Edit argos/specs/ARCHITECTURE.md — describe system shape and invariants.
   3. Review (or delete) the example ticket at $example_dst.
   4. In Claude Code: /new-ticket to draft your first real ticket, then /next to run the loop.
 

@@ -31,23 +31,23 @@ jobs:
           echo "$changed" | sed 's/^/  /'
           echo
 
-          # Files we consider "code" — anything outside .specs/, .github/, and docs.
-          code_changed=$(echo "$changed" | grep -Ev '^(\.specs/|\.github/|docs/|README\.md$|ARGOS\.md$|CLAUDE\.md$|LICENSE$|\.gitignore$)' || true)
+          # Files we consider "code" — anything outside argos/, .github/, and docs.
+          code_changed=$(echo "$changed" | grep -Ev '^(argos/|\.github/|docs/|README\.md$|ARGOS\.md$|CLAUDE\.md$|AGENTS\.md$|LICENSE$|\.gitignore$)' || true)
 
           if [ -z "$code_changed" ]; then
             echo "No code files changed (spec/docs-only PR). Passing."
             exit 0
           fi
 
-          state_changed=$(echo "$changed" | grep -x '.specs/STATE.md' || true)
+          state_changed=$(echo "$changed" | grep -x 'argos/specs/STATE.md' || true)
 
           if [ -z "$state_changed" ]; then
-            echo "::error::Argos requires living spec in sync with code. Update .specs/STATE.md."
+            echo "::error::Argos requires living spec in sync with code. Update argos/specs/STATE.md."
             echo
             echo "Code files changed:"
             echo "$code_changed" | sed 's/^/  /'
             echo
-            echo "But .specs/STATE.md was not updated in this PR."
+            echo "But argos/specs/STATE.md was not updated in this PR."
             echo "Move the ticket to 'Done this cycle', record any drift, and commit STATE.md."
             exit 1
           fi

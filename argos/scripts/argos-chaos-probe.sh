@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -uo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
+
 MODE="${1:-all}"
 TICKET_ID="${2:-}"
 
@@ -7,7 +11,7 @@ fail() { echo "CHAOS: $1"; exit 1; }
 
 probe_scope() {
   [ -n "$TICKET_ID" ] || { echo "scope probe requires ticket ID"; exit 2; }
-  ticket_file=$(find .specs/tickets -name "${TICKET_ID}*.md" -type f | head -n1)
+  ticket_file=$(find argos/specs/tickets -name "${TICKET_ID}*.md" -type f | head -n1)
   [ -n "$ticket_file" ] || fail "ticket $TICKET_ID not found"
 
   planned=$(awk '/^### Files touched/{flag=1; next} /^### /{flag=0} flag && /^- `/ {
@@ -25,9 +29,9 @@ probe_scope() {
 }
 
 probe_state() {
-  [ -f .specs/STATE.md ] || fail "no .specs/STATE.md"
-  state_ids=$(grep -oE '[A-Z]+-[0-9]+' .specs/STATE.md | sort -u)
-  file_ids=$(find .specs/tickets -name '*.md' -type f 2>/dev/null | xargs -I {} basename {} .md 2>/dev/null | grep -oE '^[A-Z]+-[0-9]+' | sort -u)
+  [ -f argos/specs/STATE.md ] || fail "no argos/specs/STATE.md"
+  state_ids=$(grep -oE '[A-Z]+-[0-9]+' argos/specs/STATE.md | sort -u)
+  file_ids=$(find argos/specs/tickets -name '*.md' -type f 2>/dev/null | xargs -I {} basename {} .md 2>/dev/null | grep -oE '^[A-Z]+-[0-9]+' | sort -u)
   orphans=$(comm -23 <(echo "$state_ids") <(echo "$file_ids"))
   [ -n "$orphans" ] && fail "STATE.md references tickets that don't exist as files: $orphans"
   echo "state: PASS"
@@ -55,7 +59,7 @@ probe_deps() {
     git diff --name-only "$base" 2>/dev/null | grep -qx "$df" && changed_deps="$changed_deps $df"
   done
   if [ -n "$changed_deps" ]; then
-    recent_adrs=$(git diff --name-only "$base" 2>/dev/null | grep -c '^\.specs/decisions/ADR-.*\.md$' || echo 0)
+    recent_adrs=$(git diff --name-only "$base" 2>/dev/null | grep -c '^argos/specs/decisions/ADR-.*\.md$' || echo 0)
     [ "$recent_adrs" -eq 0 ] && fail "deps changed ($changed_deps) but no ADR — file one with /ask first"
   fi
   echo "deps: PASS"
