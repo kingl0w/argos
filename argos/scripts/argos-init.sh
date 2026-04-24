@@ -11,18 +11,11 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 SENTINEL="argos/.initialized"
-STATE_FILE="argos/specs/STATE.md"
 
 if [ -f "$SENTINEL" ]; then
   echo "argos: already initialized ($(cat "$SENTINEL" 2>/dev/null | head -n1))"
   echo "       delete $SENTINEL to re-run, or edit argos/specs/ files directly."
   exit 0
-fi
-
-if [ -f "$STATE_FILE" ] && ! grep -q '{{' "$STATE_FILE" 2>/dev/null; then
-  echo "argos: $STATE_FILE exists and contains no template markers."
-  echo "       refusing to overwrite a live project. Delete it to force re-init."
-  exit 1
 fi
 
 templates=$(find argos/specs -type f -name '*.template' 2>/dev/null)
