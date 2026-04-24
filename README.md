@@ -71,7 +71,7 @@ New projects using v0.5 write directly to the new layout; `argos-init.sh` needs 
 
 ## Supported AI coding harnesses
 
-Argos v0.4 builds harness-specific output from a single `source/` directory. Not all harnesses are equally tested.
+Argos builds harness-specific output from a single `source/` directory. Not all harnesses are equally tested.
 
 | Harness     | Status       | Notes                                                      |
 |-------------|--------------|------------------------------------------------------------|
@@ -80,7 +80,7 @@ Argos v0.4 builds harness-specific output from a single `source/` directory. Not
 | Codex CLI   | Experimental | Files generated under `.codex/`. Not yet tested in-tool.   |
 | Gemini CLI  | Experimental | Files generated under `.gemini/`. Not yet tested in-tool.  |
 
-All harness directories are committed to the repo, so "Use this template" works instantly with Claude Code and provides a starting point for the others. Per-harness frontmatter tuning (Cursor `.mdc` fields, Codex `$ARGNAME` placeholders, Gemini minimal skills format) is Phase 2 work.
+All harness directories are committed to the repo, so "Use this template" works instantly with Claude Code and provides a starting point for the others. Per-harness frontmatter tuning (Cursor `.mdc` fields, Codex `$ARGNAME` placeholders, Gemini minimal skills format) is queued for v0.6.
 
 To regenerate after editing `source/`:
 
@@ -157,9 +157,13 @@ Why the split between `argos/` and root: `.claude/`, `.cursor/`, `.codex/`, `.ge
 
 ## Roadmap
 
-- v0.4 Phase 1 (current): multi-harness build system with Claude Code fully tested
-- v0.4 Phase 2: per-harness frontmatter tuning and in-tool validation for Cursor, Codex CLI, Gemini CLI
-- v0.4 Phase 3: README and docs sweep, terminology neutralization ("subagent" → "agent" where appropriate)
-- v0.5: real-world hardening based on dogfooding on production projects
+- **v0.5 (current, shipped):** runtime files consolidated under `argos/`; `argos-migrate-v0.5.sh` available for v0.4 users; dogfooding on `kingl0w/jobhunter` in progress.
+- **v0.5 follow-ups** (queued in `argos/specs/tickets/` of this repo):
+  - ARG-001 — argos-status.sh exits non-zero when ADRs are present
+  - ARG-002 — Document self-hosting setup in README
+  - ARG-003 — Ship editor config for visual collapse of harness-required directories
+  - ARG-004 — Investigate relocatable config for Cursor / Codex / Gemini
+  - ARG-005 — Scan-report generator for retrofit onto existing codebases
+- **Future (v0.6+):** per-harness frontmatter tuning; in-tool validation for Cursor, Codex CLI, Gemini CLI; real-world hardening from continued dogfooding.
 
 File a GitHub issue if you hit friction on any harness — the experimental ones in particular need real usage to mature.
