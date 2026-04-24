@@ -15,6 +15,9 @@ Tickets ready to be worked, in rough priority order. The planner picks the top o
 
 - ARG-001 — argos-status.sh exits non-zero when ADRs are present (P2)
 - ARG-002 — Document self-hosting setup in README (P2)
+- ARG-003 — Ship editor config for visual collapse of harness-required directories (P2)
+- ARG-004 — Investigate relocatable config for Cursor / Codex / Gemini (P2)
+- ARG-005 — Scan-report generator for retrofit onto existing codebases (P2)
 
 ## In progress
 
