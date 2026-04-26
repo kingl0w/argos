@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Minimal CLI shim. TODO(ARG1-001): replace with the real argos binary.
+# Only the verifier-parse subcommand is implemented here, since ARG1-030
+# needs `argos verifier-parse <path>` to satisfy AC #5 without prejudicing
+# ARG1-001's CLI design.
+
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "usage: argos <subcommand> [args...]" >&2
+  exit 64
+fi
+
+sub="$1"
+shift
+
+case "$sub" in
+  verifier-parse)
+    # Resolve the repo root: walk up from this script's directory until we
+    # find argos/cli/verifier_parser.py.
+    here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    root="$(cd "$here/../.." && pwd)"
+    PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m argos.cli.verifier_parser "$@"
+    ;;
+  *)
+    echo "unknown subcommand: $sub" >&2
+    exit 64
+    ;;
+esac
