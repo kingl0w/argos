@@ -25,6 +25,16 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-26T22:57:57Z-ARG1-051 ticket=ARG1-051 author=verifier session=arg1-051-worktree -->
+- **[2026-04-26T23:00:00Z] ARG1-051 — verified** (worktree `argos-v1-arg1-051`, branch `ticket/ARG1-051`)
+  - Files changed: `argos/cli/state_append.py` (new), `argos/cli/commands/state_append.py` (new), `argos/cli/__main__.py` (registered `state-append` subcommand), `argos/cli/tests/test_state_append.py` (new), `argos/specs/v1.0/tickets/ARG1-051-state-append-helper.md` (Plan + Verification appended).
+  - ACs: 7/7 met. AC#1 basic append produces a block with `id` matching the regex and attrs from flags. AC#2 block lands under `## Done this cycle` with no other `## ` heading between. AC#3 two concurrent calls (distinct tickets) both succeed via `fcntl.flock(LOCK_EX)` on sidecar `STATE.md.lock`. AC#4 same-ticket-same-second collisions resolve via 6-hex-char random suffix. AC#5 `--section "Nonexistent"` exits non-zero with `section not found` in stderr. AC#6 SIGKILL during pre-rename delay leaves STATE.md byte-identical and parser-clean (atomic write via `tempfile.mkstemp` + `os.replace`). AC#7 `--dry-run` prints block to stdout, file SHA-256 unchanged.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_state_append -v` → 12 tests, all OK (Ran 12 tests in 1.231s). Regression: `python3 -m unittest argos.cli.tests.test_version argos.cli.tests.test_verifier_parser argos.cli.tests.test_escalation_validator argos.cli.tests.test_state_append -v` → 27 tests, all OK (Ran 27 tests in 1.347s). ADR-001 stdlib-only contract preserved (pyproject.toml unchanged).
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Open decisions
 
 _none_
