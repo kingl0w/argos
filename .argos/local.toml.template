@@ -1,0 +1,30 @@
+# .argos/local.toml — per-developer Argos config (gitignored)
+#
+# Schema: argos/specs/v1.0/schemas/config.md (File 2).
+# `argos init` (ARG1-002) copies this template to .argos/local.toml on
+# new clones. Until then, the loader reads this template directly when
+# no concrete .argos/local.toml exists.
+#
+# Edit values, not key names. Local keys override project keys on
+# collision (e.g. set orchestrator.max_parallel here to override the
+# project default).
+
+[operator]
+# operator.name
+name = ""
+# operator.email — optional contact for escalation routing.
+# email = ""
+
+[escalation]
+# escalation.webhook_url — optional; left empty disables the webhook.
+webhook_url = ""
+
+[harness]
+# harness.claude_code_binary
+claude_code_binary = "claude"
+# harness.session_timeout_seconds — optional; uncomment to override.
+# session_timeout_seconds = 3600
+
+[telemetry]
+# telemetry.opt_in
+opt_in = false

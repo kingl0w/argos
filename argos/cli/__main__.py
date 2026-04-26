@@ -26,7 +26,7 @@ PROG = "argos"
 
 # Public CLI surface for v1.0 (PRD §Distribution). Order is the order shown
 # in --help.
-PUBLIC_SUBCOMMANDS = ("init", "sync", "status", "attend")
+PUBLIC_SUBCOMMANDS = ("init", "sync", "status", "attend", "config")
 
 # Internal subcommands implemented in earlier tickets; routed by the
 # dispatcher but kept out of the prominent --help summary.
@@ -50,6 +50,7 @@ def _print_usage(stream) -> None:
         "  sync      reconcile tickets, STATE.md, and git (ARG1-004)\n"
         "  status    exit 0 iff specs are internally consistent (ARG1-003)\n"
         "  attend    drain the escalation queue (ARG1-005)\n"
+        "  config    get/validate config keys (project + local TOML)\n"
         "\n"
         "Internal subcommands:\n"
         "  state-parse           parse STATE.md append-mostly blocks\n"
@@ -91,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     rest = argv[1:]
+
+    if head == "config":
+        from argos.cli.commands.config import main as config_main
+        return config_main(rest)
 
     if head in PUBLIC_SUBCOMMANDS:
         return _stub(head)
