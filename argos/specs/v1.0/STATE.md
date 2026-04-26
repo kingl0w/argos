@@ -35,6 +35,15 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-26T23:18:08Z-ARG1-050 ticket=ARG1-050 author=backfill session=arg1-050-backfill -->
+- **[2026-04-26T00:00:00Z] ARG1-050 — verified** (backfilled — original verifier ran before the v1.0 writer existed)
+  - Files: argos/specs/v1.0/schemas/state-block.md, argos/specs/v1.0/schemas/examples/state-{valid,duplicate-id,missing-attr,unclosed-block}.md, argos/cli/state_parser.py, argos/cli/commands/state_parse.py, argos/cli/__main__.py, argos/cli/__init__.py, argos/cli/tests/test_state_parser.py.
+  - ACs: 8/8 met. 13/13 pytest tests pass.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Open decisions
 
 _none_

@@ -27,7 +27,8 @@ ARCHITECTURE.md §Contracts/Config split specifies the keys per file. PRD §Targ
 - [ ] `argos config get orchestrator.max_parallel` exits 0 and prints the integer default `3` after `argos init`.
 - [ ] After setting `orchestrator.max_parallel = 5` in `.argos/local.toml`, `argos config get orchestrator.max_parallel` prints `5` (local overrides project).
 - [ ] `argos config get nonexistent.key; echo $?` prints non-zero; stderr contains `key not found`.
-- [ ] After `argos init`, `grep -Fxq '.argos/' .gitignore` exits 0; running init again does not duplicate the line (`grep -Fc '.argos/' .gitignore` returns `1`).
+- [ ] AC#7: .gitignore contains a rule that ignores everything under .argos/ except .argos/local.toml.template. Verified by: `grep -Fxq '.argos/*' .gitignore && grep -Fxq '!.argos/local.toml.template' .gitignore`.
+  - Amended after ARG1-053 verification: original literal `.argos/` rule was incompatible with shipping local.toml.template on fresh checkouts.
 - [ ] `argos config validate` exits 0 on a clean config and exits non-zero with a typed-error message when `orchestrator.max_parallel` is set to a non-integer.
 - [ ] An unknown key in either TOML file produces a stderr warning containing `unknown config key` but does not fail any command; verified by setting `orchestrator.future_key = "x"` and observing exit 0 from `argos config get orchestrator.max_parallel`.
 - [ ] `argos/specs/v1.0/schemas/config.md` documents every key with type and default; loader's known-keys list is sourced from this document (or a generated file derived from it).
