@@ -56,3 +56,16 @@ _none_
   - `pyproject.toml` declares zero runtime dependencies (stdlib-only contract per ADR-001). Console-script entry point registered for future `pip install` / `pipx install` flows.
   - Decision: pass
 <!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-26T16:30:00Z-ARG1-052 ticket=ARG1-052 author=verifier session=arg1-052-worktree -->
+- **[2026-04-26T16:30:00Z] ARG1-052 — verified** (worktree `argos-v1-arg1-052`, branch `ticket/ARG1-052`)
+  - Files changed: `argos/scripts/state-merge-driver.sh` (new, POSIX `/bin/sh` + awk merge driver), `argos/scripts/install-merge-driver.sh` (new, idempotent installer), `argos/scripts/tests/test_merge_driver.sh` (new, hermetic POSIX test harness), `.gitattributes` (new, two lines registering the driver for `argos/specs/v1.0/STATE.md` and `argos/specs/STATE.md`), `argos/specs/v1.0/tickets/ARG1-052-state-merge-driver.md` (Plan + Verification sections appended).
+  - ACs: 7/7 met (decomposed into 11 sub-checks, all PASS). AC#1 installer registers `merge.argos-state.driver = argos/scripts/state-merge-driver.sh %O %A %B %P %L`. AC#2 `.gitattributes` contains both literal `argos/specs/STATE.md merge=argos-state` and the v1.0 path line. AC#3 two-branch parallel-block merge yields exit 0, two blocks present, no `<<<<<<<` markers. AC#4 same-id collision deduped to exactly one block. AC#5 body-modified violation exits non-zero with stderr containing `block body modified — append-only violated` and the offending id `2026-04-26T13:00:00Z-ARG-MOD`. AC#6 `python3 -m argos.cli state-parse <merged-fixture>` exits 0 (uses ARG1-050 reference parser; full JSON round-trip verified). AC#7 1000-block merge measured at 35–44 ms (≥25× under the 1.0 s budget) after refactoring the per-block awk loop into a single NR==FNR awk pass per side.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `sh argos/scripts/tests/test_merge_driver.sh` → `11 pass, 0 fail, 0 warn` (exit 0).
+  - Decision: pass
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-26T16:30:00Z-ARG1-052-drift ticket=ARG1-052 author=verifier session=arg1-052-worktree -->
+- **Driver does not merge non-block prose between `%A` and `%B`.** The emission algorithm preserves `%O`'s base-file prose verbatim and appends each side's new blocks. Under the verifier-only-writer + append-only invariant this is correct, but a human hand-edit to base prose on one side concurrently with a verifier-appended block on the other side would be silently lost (the driver would emit `%O`'s prose and overwrite the human edit). Disposition: tracked as a known drift candidate; mitigation is a shell-equality preflight check that exits non-zero on prose divergence outside argos:entry blocks. Not blocking ARG1-052; file a follow-up if dogfooding surfaces the case.
+<!-- /argos:entry -->
