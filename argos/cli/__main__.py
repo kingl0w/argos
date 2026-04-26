@@ -30,7 +30,7 @@ PUBLIC_SUBCOMMANDS = ("init", "sync", "status", "attend")
 
 # Internal subcommands implemented in earlier tickets; routed by the
 # dispatcher but kept out of the prominent --help summary.
-INTERNAL_SUBCOMMANDS = ("state-parse", "verifier-parse", "escalation-validate")
+INTERNAL_SUBCOMMANDS = ("state-parse", "state-append", "verifier-parse", "escalation-validate")
 
 # Mapping of ARG1-0NN follow-up tickets that implement each public stub.
 _STUB_TICKETS = {
@@ -53,6 +53,7 @@ def _print_usage(stream) -> None:
         "\n"
         "Internal subcommands:\n"
         "  state-parse           parse STATE.md append-mostly blocks\n"
+        "  state-append          append a block to a STATE.md section\n"
         "  verifier-parse        parse a verifier-output structured block\n"
         "  escalation-validate   validate an escalation file against the schema\n"
         "\n"
@@ -98,6 +99,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "state-parse":
         from argos.cli.commands.state_parse import main as state_parse_main
         return state_parse_main(rest)
+
+    if head == "state-append":
+        from argos.cli.commands.state_append import main as state_append_main
+        return state_append_main(rest)
 
     if head == "verifier-parse":
         from argos.cli.verifier_parser import main as verifier_parse_main
