@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Provisional shim: ARG1-001 will replace this with a unified `argos`
+# subcommand dispatcher (`argos escalation-validate <path>`) and remove this
+# file. Until then, this is the AC-compatibility invocation surface.
+exec python3 -m argos.cli.escalation_validator "$@"
