@@ -46,6 +46,10 @@ _none_
 - **`argos/__init__.py`, `argos/cli/__init__.py`, `argos/cli/tests/__init__.py`** turn the `argos/` directory into a Python package alongside its existing role as a docs tree (`argos/specs/`, `argos/RULES.md`, `argos/scripts/`). Disposition: revisit during ARG1-001 — the CLI ticket should decide whether the package layout stays under `argos/cli/` or moves to a dedicated `src/` layout; if it moves, the init files here are deleted.
 <!-- /argos:entry -->
 
+<!-- argos:entry id=2026-04-26T23:07:49Z-ARG1-053-ac7 ticket=ARG1-053 author=verifier session=arg1-053-worktree -->
+- **ARG1-053 AC#7 wording is incompatible with AC#1 as written.** AC#7 requires `.gitignore` to contain the literal line `.argos/` (verified by `grep -Fxq '.argos/'` exit 0 and `grep -Fc '.argos/'` returning `1`). AC#1 requires `.argos/local.toml.template` to exist on a fresh checkout. Git's gitignore precedence rule ("It is not possible to re-include a file if a parent directory of that file is excluded") makes these mutually exclusive: a literal `.argos/` line ignores the directory wholesale and prevents the template from ever being tracked. The shipped fix changes line 3 of `.gitignore` from `.argos/` to `.argos/*` and adds `!.argos/local.toml.template` on line 4 — runtime content under `.argos/` (worktrees, scratch state) remains ignored, only the template is re-included. AC#7's *intent* (no duplicate runtime ignore for `.argos/`, idempotent across `argos init` re-runs) is preserved. Disposition: file follow-up ticket ARG1-NNN to revise AC#7 wording from `grep -Fxq '.argos/'` to a check that accepts either `.argos/` or `.argos/*` and that ignores any negation lines in the count. Until that ticket lands, ARG1-053's verifier output records AC#7 as `partial` (1 major finding) and the decision as `pass-with-minors`.
+<!-- /argos:entry -->
+
 <!-- argos:entry id=2026-04-26T15:45:00Z-ARG1-001 ticket=ARG1-001 author=verifier session=arg1-001-worktree -->
 - **[2026-04-26T15:45:00Z] ARG1-001 — verified** (worktree `argos-v1-arg1-001`, branch `ticket/ARG1-001`)
   - Files changed: `argos/specs/decisions/ADR-001-cli-language.md` (new), `pyproject.toml` (new), `argos/cli/__init__.py` (added `__version__`), `argos/cli/__main__.py` (replaced minimal dispatcher with unified argparse-free dispatcher: `--version`, `--help`, four public stubs `init/sync/status/attend`, three internal delegates `state-parse/verifier-parse/escalation-validate`), `argos/cli/argos` (rewritten from bash shim to Python launcher), `argos/cli/tests/test_version.py` (new), `argos/specs/v1.0/tickets/ARG1-001-cli-binary-scaffold.md` (Plan section appended).
@@ -78,4 +82,24 @@ _none_
 
 <!-- argos:entry id=2026-04-26T16:30:00Z-ARG1-052-drift ticket=ARG1-052 author=verifier session=arg1-052-worktree -->
 - **Driver does not merge non-block prose between `%A` and `%B`.** The emission algorithm preserves `%O`'s base-file prose verbatim and appends each side's new blocks. Under the verifier-only-writer + append-only invariant this is correct, but a human hand-edit to base prose on one side concurrently with a verifier-appended block on the other side would be silently lost (the driver would emit `%O`'s prose and overwrite the human edit). Disposition: tracked as a known drift candidate; mitigation is a shell-equality preflight check that exits non-zero on prose divergence outside argos:entry blocks. Not blocking ARG1-052; file a follow-up if dogfooding surfaces the case.
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-26T23:07:49Z-ARG1-053 ticket=ARG1-053 author=verifier session=arg1-053-worktree -->
+- **[2026-04-26T23:07:49Z] ARG1-053 — verified** (worktree `argos-v1-arg1-053`, branch `ticket/ARG1-053`)
+  - Files changed: `argos/config.toml.template` (new), `.argos/local.toml.template` (new), `argos/cli/config.py` (new — loader + `ensure_gitignore_entry` helper), `argos/cli/commands/config.py` (new — `get`/`validate` subcommands), `argos/cli/_config_schema.py` (new — `KNOWN_KEYS` table mirrored from schema doc), `argos/specs/v1.0/schemas/config.md` (new), `argos/cli/tests/test_config.py` (new — 29 tests across 7 classes), `argos/cli/__main__.py` (Plan-authorized: `"config"` added to `PUBLIC_SUBCOMMANDS`, dispatch branch added bypassing `_stub`), `.gitignore` (post-verify drift fix: `.argos/` → `.argos/*` + `!.argos/local.toml.template` so the template can be tracked while runtime `.argos/` content stays ignored), `argos/specs/v1.0/tickets/ARG1-053-config-split.md` (Plan + Implementation notes).
+  - TOML strategy: `tomllib` gated by `sys.version_info >= (3, 11)` at `argos/cli/config.py:255`; in-house regex parser for 3.9/3.10 raises `ConfigParseError` on arrays / inline tables / multi-line strings. ADR-001 stdlib-only contract preserved (no `tomli`, no `pyproject.toml` dep changes).
+  - ACs: 9/10 met, 1 partial. AC#1–#6, #8–#10 met. AC#7 partial: original literal `grep -Fxq '.argos/' .gitignore` no longer matches because the line is now `.argos/*` (required to make the negation rule for `local.toml.template` effective; Git's directory-ignore precedence prevents re-inclusion otherwise). AC#7's *intent* (no duplicate runtime ignore for `.argos/`) is preserved — `.argos/*` still ignores all runtime content.
+  - Findings: 0 critical, 1 major (AC#7 literal-grep wording vs. AC#1 template-shipping requirement — irreconcilable as written), 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_config -v` → 29 tests, all OK (Ran 29 tests in 0.139s). Regression: `python3 -m unittest argos.cli.tests.test_version argos.cli.tests.test_verifier_parser argos.cli.tests.test_escalation_validator -v` → 15 tests, all OK.
+  - Decision: pass-with-minors (AC#7 wording fix tracked as known drift below; intent satisfied, follow-up ticket required).
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-26T23:07:49Z-ARG1-053-done ticket=ARG1-053 author=verifier session=arg1-053-worktree -->
+- **[2026-04-26T23:07:49Z] ARG1-053 — completed** (config split: project + local TOML templates, loader, `argos config get/validate` subcommand, schema doc).
+  - `argos/config.toml.template` ships project defaults (6 AC#2 keys + `orchestrator.dry_plan_cache`); `verifier.minor_lint_rules` deferred to ARG1-013 as commented array.
+  - `.argos/local.toml.template` ships per-developer defaults (4 AC#3 keys + `operator.email`, `harness.session_timeout_seconds` as commented examples).
+  - Loader: `argos.cli.config.load(...)` reads project + local, applies local-overrides-project, warns on unknown keys without failing.
+  - Hybrid TOML parser: `tomllib` on 3.11+, in-house regex parser on 3.9/3.10 — both yield identical dicts (`tomllib` is the test-time oracle).
+  - `argos config get <dotted.key>` and `argos config validate` wired into the unified dispatcher at `argos/cli/__main__.py`.
+  - Decision: pass-with-minors
 <!-- /argos:entry -->

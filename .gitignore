@@ -1,6 +1,7 @@
 # Argos
 .specs/.argos-initialized
-.argos/
+.argos/*
+!.argos/local.toml.template
 
 # Node
 node_modules/
