@@ -35,3 +35,24 @@ _none_
 - **`argos/cli/argos` is a temporary bash shim**, not the real CLI binary. Implements only the `verifier-parse` subcommand to satisfy ARG1-030 AC#5 without prejudicing ARG1-001's CLI design. Disposition: ARG1-001 replaces this file with the real `argos` binary; the shim's TODO comment names that ticket.
 - **`argos/__init__.py`, `argos/cli/__init__.py`, `argos/cli/tests/__init__.py`** turn the `argos/` directory into a Python package alongside its existing role as a docs tree (`argos/specs/`, `argos/RULES.md`, `argos/scripts/`). Disposition: revisit during ARG1-001 — the CLI ticket should decide whether the package layout stays under `argos/cli/` or moves to a dedicated `src/` layout; if it moves, the init files here are deleted.
 <!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-26T15:45:00Z-ARG1-001 ticket=ARG1-001 author=verifier session=arg1-001-worktree -->
+- **[2026-04-26T15:45:00Z] ARG1-001 — verified** (worktree `argos-v1-arg1-001`, branch `ticket/ARG1-001`)
+  - Files changed: `argos/specs/decisions/ADR-001-cli-language.md` (new), `pyproject.toml` (new), `argos/cli/__init__.py` (added `__version__`), `argos/cli/__main__.py` (replaced minimal dispatcher with unified argparse-free dispatcher: `--version`, `--help`, four public stubs `init/sync/status/attend`, three internal delegates `state-parse/verifier-parse/escalation-validate`), `argos/cli/argos` (rewritten from bash shim to Python launcher), `argos/cli/tests/test_version.py` (new), `argos/specs/v1.0/tickets/ARG1-001-cli-binary-scaffold.md` (Plan section appended).
+  - ADR-001 ratifies Python (≥3.9, stdlib-only, `pyproject.toml`/PEP-621 manifest) as the CLI implementation language. Floor 3.9 reasoned by PEP 585 builtin-generic annotations; explicitly NOT 3.10. ADR-001 explicitly does NOT close PRD §Distribution packaging-channel TODO — that decision is deferred to a follow-up ADR (ADR-NNN-packaging-channel) required before any 1.0.0 release.
+  - ACs: 5/5 met. AC#1 ADR file present, Status `Accepted`, names Python + rejected alternatives (Rust/Go/Bash). AC#2 `argos --version` exits 0; stdout `argos 0.1.0` matches `^argos [0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$`. AC#3 `argos --help` exits 0; stdout contains `init`, `sync`, `status`, `attend`. AC#4 `argos` (no args) exits 2; stderr contains `usage:`. AC#5 `argos nonexistent-subcommand` exits 2; stderr `argos: unknown subcommand: nonexistent-subcommand`.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_version argos.cli.tests.test_verifier_parser argos.cli.tests.test_escalation_validator -v` → 15 tests, all OK (Ran 15 tests in 0.121s). Pre-existing `argos.cli.tests.test_state_parser` is gated on `pytest` from ARG1-050 and unchanged by this ticket.
+  - Drift closed: STATE.md drift entry id=`2026-04-26T00:00:00Z-ARG1-030-shim` is resolved by this ticket — `argos/cli/argos` is now the real Python launcher and the `argos/cli/__init__.py` package layout is ratified by ADR-001.
+  - Decision: pass
+<!-- /argos:entry -->
+
+## Done this cycle (ARG1-001)
+
+<!-- argos:entry id=2026-04-26T15:45:00Z-ARG1-001-done ticket=ARG1-001 author=verifier session=arg1-001-worktree -->
+- **[2026-04-26T15:45:00Z] ARG1-001 — completed** (CLI binary scaffold + ADR-001).
+  - Public CLI surface (`argos init / sync / status / attend`) registered as stubs; bodies tracked by ARG1-002 / ARG1-004 / ARG1-003 / ARG1-005.
+  - Internal subcommands (`state-parse`, `verifier-parse`, `escalation-validate`) routed through unified dispatcher; existing module entry points and tests untouched.
+  - `pyproject.toml` declares zero runtime dependencies (stdlib-only contract per ADR-001). Console-script entry point registered for future `pip install` / `pipx install` flows.
+  - Decision: pass
+<!-- /argos:entry -->
