@@ -1,6 +1,6 @@
 # Argos — State
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-04-26
 **Updated by:** _verifier (automated) or human (on hotfix)_
 
 This file is the project's short-term memory. Every subagent reads it first. Only the verifier writes it during the loop; humans write it on out-of-loop edits.
@@ -31,6 +31,7 @@ Tickets completed since the last cycle close. Cleared when you close a cycle (we
 
 - v0.5 consolidation — runtime files moved under `argos/`; migration script for v0.4 users shipped (commit `330ec3f`)
 - Init guard fix — removed redundant `STATE.md` heuristic; sentinel is sole source of truth for "already initialized" (commit `d409774`). Resolves the drift flagged after `7cd81f2`.
+- ARG1-050 (2026-04-26) — STATE.md append-mostly block schema doc + reference parser shipped; 13/13 pytest tests pass; 12 files added under `argos/specs/v1.0/schemas/` and `argos/cli/`.
 
 ## Open decisions
 
