@@ -1,29 +1,33 @@
-#!/usr/bin/env bash
-# Minimal CLI shim. TODO(ARG1-001): replace with the real argos binary.
-# Only the verifier-parse subcommand is implemented here, since ARG1-030
-# needs `argos verifier-parse <path>` to satisfy AC #5 without prejudicing
-# ARG1-001's CLI design.
+#!/usr/bin/env python3
+"""argos — in-repo development launcher.
 
-set -euo pipefail
+Resolves the repo root from this script's location, prepends it to sys.path
+so ``argos.cli.__main__`` is importable without ``pip install``, and dispatches
+through the unified CLI. Once the packaging-channel ADR lands and Argos is
+installed via ``pip``/``pipx``, the entry point declared in ``pyproject.toml``
+([project.scripts] argos = "argos.cli.__main__:main_entry") replaces this
+shim.
+"""
 
-if [[ $# -lt 1 ]]; then
-  echo "usage: argos <subcommand> [args...]" >&2
-  exit 64
-fi
+from __future__ import annotations
 
-sub="$1"
-shift
+import os
+import sys
 
-case "$sub" in
-  verifier-parse)
-    # Resolve the repo root: walk up from this script's directory until we
-    # find argos/cli/verifier_parser.py.
-    here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    root="$(cd "$here/../.." && pwd)"
-    PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m argos.cli.verifier_parser "$@"
-    ;;
-  *)
-    echo "unknown subcommand: $sub" >&2
-    exit 64
-    ;;
-esac
+
+def _repo_root() -> str:
+    here = os.path.dirname(os.path.abspath(__file__))
+    # argos/cli/argos -> argos/cli -> argos -> <repo root>
+    return os.path.dirname(os.path.dirname(here))
+
+
+def _main() -> int:
+    root = _repo_root()
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from argos.cli.__main__ import main
+    return main(sys.argv[1:])
+
+
+if __name__ == "__main__":
+    sys.exit(_main())
