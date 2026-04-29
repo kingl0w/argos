@@ -28,6 +28,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from argos.cli.state_append import (  # noqa: E402
+    InvalidSuffixError,
     SectionNotFoundError,
     append_block,
     build_block,
@@ -405,6 +406,163 @@ class StateAppendBuildBlockTests(unittest.TestCase):
                     body="x",
                     dry_run=True,
                 )
+
+
+class StateAppendSuffixTests(unittest.TestCase):
+    """Tests for ARG1-061 ``--suffix`` flag on ``argos state-append``."""
+
+    def setUp(self) -> None:
+        self._tmpdir_obj = tempfile.TemporaryDirectory()
+        self.tmpdir = Path(self._tmpdir_obj.name)
+        self.state_file = self.tmpdir / "STATE.md"
+        self.state_file.write_text(_STATE_FIXTURE, encoding="utf-8")
+        self.body_file = self.tmpdir / "body.md"
+        self.body_file.write_text(_BODY_FIXTURE, encoding="utf-8")
+
+    def tearDown(self) -> None:
+        self._tmpdir_obj.cleanup()
+
+    def test_cli_suffix_appended_to_id(self) -> None:
+        result = _run_cli(
+            "state-append",
+            "--section", "Known drift",
+            "--ticket", "ARG1-099",
+            "--author", "coder",
+            "--session", "sess-test",
+            "--body-file", str(self.body_file),
+            "--state-file", str(self.state_file),
+            "--suffix", "drift",
+            "--dry-run",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Open tag's id attribute ends with "-ARG1-099-drift".
+        match = re.search(r"id=(\S+)", result.stdout)
+        self.assertIsNotNone(match, f"no id attribute in stdout: {result.stdout!r}")
+        self.assertRegex(
+            match.group(1),
+            r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z-ARG1-099-drift$",
+        )
+
+    def test_cli_suffix_with_space_rejected(self) -> None:
+        result = _run_cli(
+            "state-append",
+            "--section", "Known drift",
+            "--ticket", "ARG1-099",
+            "--author", "coder",
+            "--session", "sess-test",
+            "--body-file", str(self.body_file),
+            "--state-file", str(self.state_file),
+            "--suffix", "bad space",
+            "--dry-run",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid suffix", result.stderr)
+        self.assertIn("bad space", result.stderr)
+
+    def test_cli_suffix_uppercase_rejected(self) -> None:
+        result = _run_cli(
+            "state-append",
+            "--section", "Known drift",
+            "--ticket", "ARG1-099",
+            "--author", "coder",
+            "--session", "sess-test",
+            "--body-file", str(self.body_file),
+            "--state-file", str(self.state_file),
+            "--suffix", "BAD",
+            "--dry-run",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid suffix", result.stderr)
+
+    def test_cli_suffix_empty_rejected(self) -> None:
+        result = _run_cli(
+            "state-append",
+            "--section", "Known drift",
+            "--ticket", "ARG1-099",
+            "--author", "coder",
+            "--session", "sess-test",
+            "--body-file", str(self.body_file),
+            "--state-file", str(self.state_file),
+            "--suffix", "",
+            "--dry-run",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid suffix", result.stderr)
+
+    def test_cli_suffix_complex_slug_accepted(self) -> None:
+        result = _run_cli(
+            "state-append",
+            "--section", "Known drift",
+            "--ticket", "ARG1-099",
+            "--author", "coder",
+            "--session", "sess-test",
+            "--body-file", str(self.body_file),
+            "--state-file", str(self.state_file),
+            "--suffix", "valid-slug-123",
+            "--dry-run",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        match = re.search(r"id=(\S+)", result.stdout)
+        self.assertIsNotNone(match)
+        self.assertTrue(
+            match.group(1).endswith("-ARG1-099-valid-slug-123"),
+            f"id did not end with expected suffix: {match.group(1)!r}",
+        )
+
+    def test_library_suffix_collision_appends_hex(self) -> None:
+        frozen = datetime(2026, 4, 26, 14, 33, 1, tzinfo=timezone.utc)
+
+        first = append_block(
+            self.state_file,
+            section="Known drift",
+            ticket="ARG1-099",
+            author="coder",
+            session="sess-a",
+            body=_BODY_FIXTURE,
+            now=frozen,
+            suffix="drift",
+        )
+        second = append_block(
+            self.state_file,
+            section="Known drift",
+            ticket="ARG1-099",
+            author="coder",
+            session="sess-b",
+            body=_BODY_FIXTURE,
+            now=frozen,
+            suffix="drift",
+        )
+
+        self.assertNotEqual(first, second)
+
+        ids = [b.id for b in parse_file(self.state_file) if b.ticket == "ARG1-099"]
+        self.assertEqual(len(ids), 2, f"expected two ARG1-099 blocks; got {ids!r}")
+        self.assertEqual(len(set(ids)), 2, f"ids collided: {ids!r}")
+
+        primary_re = re.compile(r"^2026-04-26T14:33:01Z-ARG1-099-drift$")
+        suffixed_re = re.compile(r"^2026-04-26T14:33:01Z-ARG1-099-drift-[0-9a-f]{6}$")
+        primaries = [i for i in ids if primary_re.match(i)]
+        suffixed = [i for i in ids if suffixed_re.match(i)]
+        self.assertEqual(len(primaries), 1, f"expected one primary id; got {ids!r}")
+        self.assertEqual(len(suffixed), 1, f"expected one collision-suffixed id; got {ids!r}")
+
+    def test_library_suffix_invalid_raises(self) -> None:
+        with self.assertRaises(InvalidSuffixError):
+            generate_id("ARG1-099", suffix="BAD")
+        with self.assertRaises(InvalidSuffixError):
+            generate_id("ARG1-099", suffix="bad space")
+        with self.assertRaises(InvalidSuffixError):
+            generate_id("ARG1-099", suffix="")
+        with self.assertRaises(InvalidSuffixError):
+            generate_id("ARG1-099", suffix="under_score")
+
+    def test_no_suffix_unchanged_format_regression(self) -> None:
+        """Flagless invocation must still produce an id with no trailing dash."""
+        frozen = datetime(2026, 4, 26, 14, 33, 1, tzinfo=timezone.utc)
+        out = generate_id("ARG1-099", now=frozen, existing_ids=set())
+        self.assertEqual(out, "2026-04-26T14:33:01Z-ARG1-099")
+        self.assertNotIn("--", out)
+        self.assertFalse(out.endswith("-"))
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -66,6 +66,17 @@ _none_
 
 _none_
 
+
+<!-- argos:entry id=2026-04-29T20:24:14Z-ARG1-061-done ticket=ARG1-061 author=coder session=arg1-061-worktree -->
+- **[2026-04-29T20:30:00Z] ARG1-061 — `argos state-append --suffix` flag** (worktree `argos-v1-arg1-061`, branch `ticket/ARG1-061`)
+  - Files changed: `argos/cli/state_append.py` (+`InvalidSuffixError`, `_DISAMBIG_SUFFIX_RE`, `suffix=` kwarg on `generate_id` and `append_block`), `argos/cli/commands/state_append.py` (+`--suffix` argparse option, `InvalidSuffixError` → exit 2), `argos/specs/v1.0/schemas/state-block.md` (id-format table row updated, new `### Id grammar (optional slots)` paragraph documenting both the disambiguation suffix and the collision-retry hex), `argos/cli/tests/test_state_append.py` (+`StateAppendSuffixTests`, 8 new tests), `argos/specs/v1.0/tickets/ARG1-061-state-append-suffix-flag.md` (new ticket file).
+  - ACs: 9/9 met. AC#1 happy path id matches `^…Z-ARG1-099-drift$`. AC#2-#4 reject `bad space` / `BAD` / `""` with exit 2 + stderr `invalid suffix`. AC#5 `valid-slug-123` accepted. AC#6 collision-with-suffix produces `…-drift-{6hex}`. AC#7 regression: flagless invocation produces `…Z-ARG1-099` byte-identical to pre-ARG1-061. AC#8 schema doc updated. AC#9 test suite passes.
+  - Tests: `python3 -m unittest argos.cli.tests.test_state_append -v` → 20 tests, all OK (12 prior + 8 new). Regression: `test_version test_verifier_parser test_escalation_validator test_config` → 44 tests, all OK.
+  - Stdlib-only preserved (no new imports beyond `re`, already present); ADR-001 + ADR-002 contracts intact.
+  - This block's id uses `--suffix done` to dogfood the new flag.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
