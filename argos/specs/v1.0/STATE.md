@@ -88,6 +88,11 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-29T19:59:59Z-ARG1-010 ticket=ARG1-010 author=coder session=arg1-057-drain -->
+- **ARG1-010 AC#3 was satisfied via system `python3` + `pyyaml`, not via a portable AC harness.** ADR-002 ratifies stdlib-only AC tooling and pins the substitute pattern (`argos frontmatter-parse`). Disposition: ARG1-059 retrofits the AC; ARG1-010's shipped output files are not affected, only the AC text in the ticket file changes. Until ARG1-059 lands, AC#3 should be treated as provisionally satisfied.
+<!-- /argos:entry -->
+
 ## Done this cycle (ARG1-001)
 
 <!-- argos:entry id=2026-04-26T15:45:00Z-ARG1-001-done ticket=ARG1-001 author=verifier session=arg1-001-worktree -->
