@@ -6,7 +6,8 @@ is routed by subcommand name. Subcommands fall into two groups:
 - **Implemented internal subcommands** delegate to existing reference modules:
   ``state-parse`` → :mod:`argos.cli.commands.state_parse`,
   ``verifier-parse`` → :mod:`argos.cli.verifier_parser`,
-  ``escalation-validate`` → :mod:`argos.cli.escalation_validator`.
+  ``escalation-validate`` → :mod:`argos.cli.escalation_validator`,
+  ``frontmatter-parse`` → :mod:`argos.cli.commands.frontmatter_parse`.
 - **Public-surface stubs** for ARG1-002 / ARG1-003 / ARG1-004 / ARG1-005:
   ``init`` / ``sync`` / ``status`` / ``attend`` print a "not yet implemented"
   message and exit non-zero. They exist so ``argos --help`` lists them.
@@ -30,7 +31,13 @@ PUBLIC_SUBCOMMANDS = ("init", "sync", "status", "attend", "config")
 
 # Internal subcommands implemented in earlier tickets; routed by the
 # dispatcher but kept out of the prominent --help summary.
-INTERNAL_SUBCOMMANDS = ("state-parse", "state-append", "verifier-parse", "escalation-validate")
+INTERNAL_SUBCOMMANDS = (
+    "state-parse",
+    "state-append",
+    "verifier-parse",
+    "escalation-validate",
+    "frontmatter-parse",
+)
 
 # Mapping of ARG1-0NN follow-up tickets that implement each public stub.
 _STUB_TICKETS = {
@@ -57,6 +64,7 @@ def _print_usage(stream) -> None:
         "  state-append          append a block to a STATE.md section\n"
         "  verifier-parse        parse a verifier-output structured block\n"
         "  escalation-validate   validate an escalation file against the schema\n"
+        "  frontmatter-parse     parse YAML-subset frontmatter (ADR-002) to JSON\n"
         "\n"
         "Run 'argos --version' to print the version.\n"
     )
@@ -118,6 +126,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "escalation-validate":
         from argos.cli.escalation_validator import main as escalation_main
         return escalation_main(rest)
+
+    if head == "frontmatter-parse":
+        from argos.cli.commands.frontmatter_parse import main as frontmatter_parse_main
+        return frontmatter_parse_main(rest)
 
     sys.stderr.write(f"argos: unknown subcommand: {head}\n")
     return 2
