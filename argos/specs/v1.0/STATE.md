@@ -44,6 +44,16 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-29T17:52:25Z-ARG1-010 ticket=ARG1-010 author=orchestrator session=arg1-010-worktree -->
+- **[2026-04-29T00:00:00Z] ARG1-010 — orchestrator agent definition committed** (worktree `argos-v1-arg1-010`, branch `ticket/ARG1-010`)
+  - Files changed: `argos/specs/v1.0/agents/orchestrator.md` (new), `.claude/agents/orchestrator.md` (new — byte-identical mirror).
+  - ACs: 5/5 met. AC#1 `.claude/agents/orchestrator.md` exists. AC#2 v1.0 mirror exists; `diff -q` exits 0. AC#3 frontmatter parses as YAML; both `allowed_tools` and `denied_paths` keys present (verified with system `python3` + `pyyaml`). AC#4 `denied_paths` includes literal `argos/specs/PRD.md`, `argos/specs/ARCHITECTURE.md`, `argos/specs/STATE.md` (counts 2/2/2 across legacy + v1.0 paths). AC#5 body contains `dispatcher` (2), `reconciler` (2), `escalation` (15), `cannot mutate code` (1).
+  - Definition covers: role/scope, inputs, outputs, decision authority, interaction contract with planner/coder/watchdog/verifier, parallel-dispatch contract (file-disjointness only — no content-level conflict detection), auto-fix retry contract (cap 1; ARG1-013 implements), escalation triggers calibrated to the three load-bearing precedents (ADR-001, tomllib-vs-tomli, .gitignore precedence) plus merge-time semantic conflict on disjoint sessions, termination conditions tied to `argos status` exit code, boundaries.
+  - Out of scope per ticket: no CLI subcommand bodies, no worktree mechanics, no dispatch log writer, no `/orchestrate` slash command, no code.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Open decisions
 
 _none_
