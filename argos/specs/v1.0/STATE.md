@@ -77,6 +77,16 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-29T20:57:41Z-ARG1-062 ticket=ARG1-062 author=coder session=arg1-062-worktree -->
+- **[2026-04-29T21:30:00Z] ARG1-062 — clarified ARG1-060 AC#1 stdlib import allowlist** (worktree `argos-v1-arg1-062`, branch `ticket/ARG1-062`)
+  - Files changed: `argos/specs/v1.0/tickets/ARG1-060-frontmatter-parse-subcommand.md` (AC#1 only — added `__future__` to the permitted-imports list with a one-line ADR-001 §Decision item 1 citation noting the clarification was implicit and shipped `StdlibOnlyTests` already treated it as permitted).
+  - Audit: ARG1-059's ticket text does not enumerate a permitted-import allowlist; only ARG1-060 has the AC#1 pattern. Single-file edit.
+  - Out of scope: no code changes to `argos frontmatter-parse`; no test changes (the existing `StdlibOnlyTests.test_module_imports_only_permitted_stdlib` is correct as written and continues to pass); no ADR-001 amendment (ADR-001 already endorses `__future__`; the gap was downstream in ticket prose only).
+  - This corrects ARG1-060's shipped ticket text; ARG1-060's commit (562fc69) and the shipped frontmatter_parser module are unaffected.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
