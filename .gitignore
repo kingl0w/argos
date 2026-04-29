@@ -2,6 +2,7 @@
 .specs/.argos-initialized
 .argos/*
 !.argos/local.toml.template
+**/STATE.md.lock
 
 # Node
 node_modules/

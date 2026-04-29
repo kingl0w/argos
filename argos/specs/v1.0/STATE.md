@@ -44,6 +44,17 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-29T18:13:12Z-ARG1-058 ticket=ARG1-058 author=coder session=arg1-058-worktree -->
+- **[2026-04-29T00:00:00Z] ARG1-058 — narrowed STATE.md sidecar lock ignore** (worktree `argos-v1-arg1-058`, branch `ticket/ARG1-058`, branched from `main`)
+  - Files changed: `.gitignore` (+1 line, `**/STATE.md.lock` under the `# Argos` block).
+  - Supersedes ARG1-056's broader `*.lock` pattern. Project convention is per-file ignores for lockfiles (`Cargo.lock` is already explicit); a glob would silently swallow `yarn.lock` / `pnpm-lock.yaml` / `package-lock.json` if a JS component ever lands.
+  - Verified: `git check-ignore -v` resolves both `argos/specs/STATE.md.lock` and `argos/specs/v1.0/STATE.md.lock` to `.gitignore:5:**/STATE.md.lock`. `git check-ignore -v yarn.lock` exits non-zero (not ignored); `package-lock.json` and `pnpm-lock.yaml` likewise not ignored. After `argos state-append`, the v1.0 sidecar lock is created and `git status` is clean modulo the STATE entry.
+  - Branched from main, not from ARG1-056 — diff is reviewable independently. Operator handles merge order between ARG1-056 and ARG1-058 (recommendation: merge only ARG1-058, or merge ARG1-056 first then ARG1-058 will conflict on the .gitignore line and the narrower pattern wins).
+  - Out of scope: no other .gitignore edits, no changes to ARG1-051 locking mechanism.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Open decisions
 
 _none_
