@@ -77,6 +77,19 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-29T21:17:11Z-ARG1-059-done ticket=ARG1-059 author=verifier session=arg1-059-worktree -->
+- **[2026-04-29T22:30:00Z] ARG1-059 — yaml AC retrofit verified** (worktree `argos-v1-arg1-059`, branch `ticket/ARG1-059`)
+  - Files changed: `argos/specs/v1.0/tickets/ARG1-010-orchestrator-agent-definition.md` (AC#3 only — pyyaml `import yaml` + `yaml.safe_load` replaced with `argos frontmatter-parse | python3 -c "import json,sys; ..."` stdlib pipeline; same two key-presence assertions); `argos/specs/v1.0/tickets/ARG1-012-dispatch-log-writer.md` (AC#1 only — same retrofit shape, six required dispatch-log keys); `argos/specs/v1.0/tickets/ARG1-059-retrofit-yaml-acs.md` (own ACs #1+#2 collapsed into a precise self-consistent check using `grep -nE '^- \[[ x]\] .*yaml\.safe_load' argos/specs/v1.0/tickets/*.md | grep -v 'ARG1-059-retrofit-yaml-acs'`; AC#5 prose reworded to remove embedded literal old-command quote).
+  - Audit: `grep -rn 'import yaml\|yaml\.safe_load' argos/specs/v1.0/tickets/` — only AC checkbox lines containing `yaml.safe_load` were ARG1-010 line 27 and ARG1-012 line 25; both retrofitted. Remaining substring matches are non-AC prose (ARG1-030 plan-section narrative line 71 explaining why the verifier-output parser hand-rolls; ARG1-060 context line 14 quoting ARG1-010's prior state; ARG1-059's own scope description) — out of scope per ADR-002 §AC-text-only intent.
+  - Verification: ARG1-010 retrofitted AC#3 run live against current `.claude/agents/orchestrator.md` exits 0 (both `allowed_tools` and `denied_paths` keys present in `argos frontmatter-parse` JSON output). ARG1-012 retrofitted AC#1 dry-passes against a synthetic dispatch-log fixture with all six required keys (exit 0; `frontmatter-parse` parses the synthetic frontmatter cleanly). ARG1-059's own AC#1 grep run on this branch returns no matches outside ARG1-059 (pipeline exits 1).
+  - Tests: regression sweep `test_frontmatter_parser test_state_append test_version test_verifier_parser test_escalation_validator test_config` → 89 tests, all OK. No code changes; AC-text-only.
+  - Out of scope confirmed: no edits to `.claude/agents/`, `argos/specs/v1.0/agents/`, `argos/cli/`, `argos/specs/v1.0/schemas/`, ADR-002, ARG1-060, or any Layer 2 ticket.
+  - Closes the ARG1-010-drift block under §Known drift (sibling resolution entry follows).
+  - Layer 2 unblocked: ARG1-020 / ARG1-031 / ARG1-041 are no longer at risk of inheriting the legacy `import yaml` AC pattern from shipped neighbors.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
@@ -102,6 +115,11 @@ _none_
 
 <!-- argos:entry id=2026-04-29T19:59:59Z-ARG1-010 ticket=ARG1-010 author=coder session=arg1-057-drain -->
 - **ARG1-010 AC#3 was satisfied via system `python3` + `pyyaml`, not via a portable AC harness.** ADR-002 ratifies stdlib-only AC tooling and pins the substitute pattern (`argos frontmatter-parse`). Disposition: ARG1-059 retrofits the AC; ARG1-010's shipped output files are not affected, only the AC text in the ticket file changes. Until ARG1-059 lands, AC#3 should be treated as provisionally satisfied.
+<!-- /argos:entry -->
+
+
+<!-- argos:entry id=2026-04-29T21:17:11Z-ARG1-010-drift-resolved ticket=ARG1-010 author=verifier session=arg1-059-worktree -->
+- **ARG1-010 AC#3 drift resolved by ARG1-059.** The earlier provisional disposition (`STATE.md` Known-drift entry id `2026-04-29T19:59:59Z-ARG1-010` from commit `c5c0c20`) noted that AC#3 had been satisfied via system `python3` + `pyyaml` rather than via a portable AC harness. ARG1-059 retrofitted AC#3 to invoke `argos frontmatter-parse` (the stdlib substitute pinned by ADR-002), and the retrofitted command was re-run on the ARG1-059 branch against the current `.claude/agents/orchestrator.md` and exits 0. AC#3 is now satisfied via stdlib-only AC tooling end-to-end; the foot-gun cannot recur. Disposition: closed.
 <!-- /argos:entry -->
 
 ## Done this cycle (ARG1-001)

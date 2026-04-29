@@ -24,7 +24,7 @@ ARCHITECTURE.md §Components/Orchestrator names every authority boundary the age
 
 - [ ] `test -f .claude/agents/orchestrator.md` exits 0.
 - [ ] `test -f argos/specs/v1.0/agents/orchestrator.md` exits 0; the two files have identical content (`diff -q .claude/agents/orchestrator.md argos/specs/v1.0/agents/orchestrator.md` exits 0).
-- [ ] The frontmatter of `.claude/agents/orchestrator.md` parses as YAML; `python -c "import yaml,sys; d=yaml.safe_load(open('.claude/agents/orchestrator.md').read().split('---')[1]); sys.exit(0 if 'allowed_tools' in d and 'denied_paths' in d else 1)"` exits 0.
+- [ ] The frontmatter of `.claude/agents/orchestrator.md` parses cleanly and contains both `allowed_tools` and `denied_paths` keys; verified by `python3 -m argos.cli frontmatter-parse .claude/agents/orchestrator.md | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); sys.exit(0 if 'allowed_tools' in d and 'denied_paths' in d else 1)"` exiting 0. _(Retrofitted from a pyyaml-based check per ADR-002; ARG1-059.)_
 - [ ] `denied_paths` includes the literal strings `argos/specs/PRD.md`, `argos/specs/ARCHITECTURE.md`, `argos/specs/STATE.md`; verified by `grep -Fc 'argos/specs/STATE.md' .claude/agents/orchestrator.md` returning ≥1 for each.
 - [ ] The agent body contains the strings `dispatcher`, `reconciler`, `escalation`, and `cannot mutate code`; verified by `grep -Fc` per string.
 
