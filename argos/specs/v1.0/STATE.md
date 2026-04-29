@@ -77,17 +77,6 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
-
-<!-- argos:entry id=2026-04-29T20:53:39Z-ARG1-060 ticket=ARG1-060 author=verifier session=arg1-060-worktree -->
-- **[2026-04-29T21:00:00Z] ARG1-060 — `argos frontmatter-parse` subcommand verified** (worktree `argos-v1-arg1-060`, branch `ticket/ARG1-060`)
-  - Files changed: `argos/cli/frontmatter_parser.py` (new — ~330 lines, stdlib-only YAML-subset parser implementing ADR-002 §3 grammar and §4 rejection contract); `argos/cli/commands/frontmatter_parse.py` (new — thin shim parallel to `state_parse`); `argos/cli/__main__.py` (modify — added `frontmatter-parse` to `INTERNAL_SUBCOMMANDS`, dispatch branch, help line); `argos/cli/tests/test_frontmatter_parser.py` (new — 25 tests across 8 classes); `argos/cli/tests/fixtures/frontmatter/{flow-seq,flow-map,multiline-pipe,nested-deep,anchor,alias,tag,non-utf8,good-quoted,good-comments}.md` (new — one fixture per rejection AC plus two happy-path fixtures).
-  - ACs: 16/16 met. AC#1 stdlib-only verified by `StdlibOnlyTests.test_module_imports_only_permitted_stdlib` (parses every `import`/`from` line; only `__future__` plus the eight permitted modules appear; `__future__` is sanctioned by ADR-001 §Decision item 1 as the project pattern). AC#2 / AC#3 round-trip the live shipped `orchestrator.md` and `verifier.md` frontmatter via the CLI; JSON contains all required keys, `allowed_tools` and `denied_paths` are arrays. AC#4 (the load-bearing test): the brace-glob `"**/*.{ts,tsx,js,jsx,py,...}"` quoted scalar in `denied_paths` round-trips verbatim through both CLI and library API. AC#5 leading + trailing comments are no-ops. AC#6–#13 every rejected feature exits 2 with `frontmatter-parse: line N: <reason>` matching the ADR-002 §4 contract. AC#14 missing file exits 1. AC#15 subcommand visible in `argos --help`; `argos frontmatter-parse --help` exits 0 with usage. AC#16 test suite passes (25 tests). AC#17 regression: `test_version test_state_append test_verifier_parser test_escalation_validator test_config` → 64/64 pass.
-  - Tests: `python3 -m unittest argos.cli.tests.test_frontmatter_parser -v` → 25 OK; regression sweep → 64 OK; combined 89/89.
-  - Stdlib-only preserved (no new imports beyond `re`, `sys`, `json`, `pathlib`, `argparse`, `dataclasses`, `typing`, plus `__future__`); ADR-001 + ADR-002 contracts intact. No third-party deps added; `pyproject.toml` unchanged.
-  - Layer 2 unblocked. ARG1-059 (retrofit ARG1-010 / ARG1-012 ACs to invoke `argos frontmatter-parse`) is now ready to dispatch.
-  - Decision: pass
-<!-- /argos:entry -->
-
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
@@ -157,3 +146,22 @@ _none_
   - `argos config get <dotted.key>` and `argos config validate` wired into the unified dispatcher at `argos/cli/__main__.py`.
   - Decision: pass-with-minors
 <!-- /argos:entry -->
+<!-- argos:entry id=2026-04-29T20:53:39Z-ARG1-060 ticket=ARG1-060 author=verifier session=arg1-060-worktree -->
+- **[2026-04-29T21:00:00Z] ARG1-060 — `argos frontmatter-parse` subcommand verified** (worktree `argos-v1-arg1-060`, branch `ticket/ARG1-060`)
+  - Files changed: `argos/cli/frontmatter_parser.py` (new — ~330 lines, stdlib-only YAML-subset parser implementing ADR-002 §3 grammar and §4 rejection contract); `argos/cli/commands/frontmatter_parse.py` (new — thin shim parallel to `state_parse`); `argos/cli/__main__.py` (modify — added `frontmatter-parse` to `INTERNAL_SUBCOMMANDS`, dispatch branch, help line); `argos/cli/tests/test_frontmatter_parser.py` (new — 25 tests across 8 classes); `argos/cli/tests/fixtures/frontmatter/{flow-seq,flow-map,multiline-pipe,nested-deep,anchor,alias,tag,non-utf8,good-quoted,good-comments}.md` (new — one fixture per rejection AC plus two happy-path fixtures).
+  - ACs: 16/16 met. AC#1 stdlib-only verified by `StdlibOnlyTests.test_module_imports_only_permitted_stdlib` (parses every `import`/`from` line; only `__future__` plus the eight permitted modules appear; `__future__` is sanctioned by ADR-001 §Decision item 1 as the project pattern). AC#2 / AC#3 round-trip the live shipped `orchestrator.md` and `verifier.md` frontmatter via the CLI; JSON contains all required keys, `allowed_tools` and `denied_paths` are arrays. AC#4 (the load-bearing test): the brace-glob `"**/*.{ts,tsx,js,jsx,py,...}"` quoted scalar in `denied_paths` round-trips verbatim through both CLI and library API. AC#5 leading + trailing comments are no-ops. AC#6–#13 every rejected feature exits 2 with `frontmatter-parse: line N: <reason>` matching the ADR-002 §4 contract. AC#14 missing file exits 1. AC#15 subcommand visible in `argos --help`; `argos frontmatter-parse --help` exits 0 with usage. AC#16 test suite passes (25 tests). AC#17 regression: `test_version test_state_append test_verifier_parser test_escalation_validator test_config` → 64/64 pass.
+  - Tests: `python3 -m unittest argos.cli.tests.test_frontmatter_parser -v` → 25 OK; regression sweep → 64 OK; combined 89/89.
+  - Stdlib-only preserved (no new imports beyond `re`, `sys`, `json`, `pathlib`, `argparse`, `dataclasses`, `typing`, plus `__future__`); ADR-001 + ADR-002 contracts intact. No third-party deps added; `pyproject.toml` unchanged.
+  - Layer 2 unblocked. ARG1-059 (retrofit ARG1-010 / ARG1-012 ACs to invoke `argos frontmatter-parse`) is now ready to dispatch.
+  - Decision: pass
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-29T20:57:41Z-ARG1-062 ticket=ARG1-062 author=coder session=arg1-062-worktree -->
+- **[2026-04-29T21:30:00Z] ARG1-062 — clarified ARG1-060 AC#1 stdlib import allowlist** (worktree `argos-v1-arg1-062`, branch `ticket/ARG1-062`)
+  - Files changed: `argos/specs/v1.0/tickets/ARG1-060-frontmatter-parse-subcommand.md` (AC#1 only — added `__future__` to the permitted-imports list with a one-line ADR-001 §Decision item 1 citation noting the clarification was implicit and shipped `StdlibOnlyTests` already treated it as permitted).
+  - Audit: ARG1-059's ticket text does not enumerate a permitted-import allowlist; only ARG1-060 has the AC#1 pattern. Single-file edit.
+  - Out of scope: no code changes to `argos frontmatter-parse`; no test changes (the existing `StdlibOnlyTests.test_module_imports_only_permitted_stdlib` is correct as written and continues to pass); no ADR-001 amendment (ADR-001 already endorses `__future__`; the gap was downstream in ticket prose only).
+  - This corrects ARG1-060's shipped ticket text; ARG1-060's commit (562fc69) and the shipped frontmatter_parser module are unaffected.
+  - Decision: pass
+<!-- /argos:entry -->
+

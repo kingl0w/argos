@@ -23,7 +23,7 @@ ARG1-057 surfaced a foot-gun: ARG1-010 AC#3 used `python -c "import yaml; yaml.s
 
 ## Acceptance criteria
 
-- [ ] `test -f argos/cli/frontmatter_parser.py` exits 0; module is stdlib-only (`grep -E '^import |^from ' argos/cli/frontmatter_parser.py` shows only stdlib modules — `re`, `sys`, `json`, `pathlib`, `argparse`, `dataclasses`, `typing`, `enum` permitted; anything else fails AC).
+- [ ] `test -f argos/cli/frontmatter_parser.py` exits 0; module is stdlib-only (`grep -E '^import |^from ' argos/cli/frontmatter_parser.py` shows only stdlib modules — `__future__`, `re`, `sys`, `json`, `pathlib`, `argparse`, `dataclasses`, `typing`, `enum` permitted; anything else fails AC). _(`__future__` is the project-standard import for Python ≥3.9 builtin generics per ADR-001 §Decision item 1; clarified by ARG1-062 — it was implicit in the original AC text, which the shipped `StdlibOnlyTests` test treats as permitted.)_
 - [ ] `python3 -m argos.cli frontmatter-parse argos/specs/v1.0/agents/orchestrator.md` exits 0; stdout is valid JSON; the JSON object contains keys `name`, `description`, `allowed_tools`, `denied_paths`; `allowed_tools` is a JSON array; `denied_paths` is a JSON array.
 - [ ] `python3 -m argos.cli frontmatter-parse argos/specs/v1.0/agents/verifier.md` exits 0; stdout JSON contains keys `name`, `description`, `tools`.
 - [ ] Happy path with quoted scalar: a fixture frontmatter containing `denied_paths:\n  - "**/*.{ts,py}"` parses; the array element is the string `**/*.{ts,py}` (verbatim, including braces).
