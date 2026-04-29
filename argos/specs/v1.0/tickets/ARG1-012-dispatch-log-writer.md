@@ -22,7 +22,7 @@ ARCHITECTURE.md §Components/Orchestrator names dispatch logs as part of the orc
 ## Acceptance criteria
 
 - [ ] After a successful dispatch of ticket `ARG1-099` in epic `EPIC-001`, `test -f argos/specs/dispatch/EPIC-001/ARG1-099.md` exits 0.
-- [ ] The dispatch log file frontmatter parses as YAML with required keys `ticket_id`, `epic_id`, `batch_id`, `dispatched_at`, `worktree_path`, `session_id`; verified by `python -c "import yaml; d=yaml.safe_load(open('argos/specs/dispatch/EPIC-001/ARG1-099.md').read().split('---')[1]); assert all(k in d for k in ['ticket_id','epic_id','batch_id','dispatched_at','worktree_path','session_id'])"` exiting 0.
+- [ ] The dispatch log file frontmatter contains required keys `ticket_id`, `epic_id`, `batch_id`, `dispatched_at`, `worktree_path`, `session_id`; verified by `python3 -m argos.cli frontmatter-parse argos/specs/dispatch/EPIC-001/ARG1-099.md | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); assert all(k in d for k in ['ticket_id','epic_id','batch_id','dispatched_at','worktree_path','session_id'])"` exiting 0. _(Retrofitted from a pyyaml-based check per ADR-002; ARG1-059.)_
 - [ ] After a second event on the same ticket (e.g., verifier result), the file size strictly increases (`stat -c %s argos/specs/dispatch/EPIC-001/ARG1-099.md` returns a larger number than before); the original frontmatter is unchanged.
 - [ ] `argos orchestrate --dry-run` writes nothing to `argos/specs/dispatch/` (verified by `find argos/specs/dispatch -newer /tmp/before-marker` returning empty).
 - [ ] Two concurrent dispatches to different tickets produce two separate files; no file is overwritten.
