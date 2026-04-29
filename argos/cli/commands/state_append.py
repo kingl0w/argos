@@ -17,7 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from argos.cli.state_append import SectionNotFoundError, append_block
+from argos.cli.state_append import InvalidSuffixError, SectionNotFoundError, append_block
 
 _DEFAULT_STATE_FILE = "argos/specs/v1.0/STATE.md"
 
@@ -34,6 +34,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--body-file", required=True, help="path to a markdown file containing the block body, or '-' for stdin")
     parser.add_argument("--state-file", default=_DEFAULT_STATE_FILE, help="path to STATE.md (default: %(default)s)")
     parser.add_argument("--dry-run", action="store_true", help="print the block to stdout without modifying any file")
+    parser.add_argument(
+        "--suffix",
+        default=None,
+        help="optional id disambiguation slug appended after ticket-id; must match ^[a-z0-9-]+$",
+    )
     return parser
 
 
@@ -68,7 +73,11 @@ def main(argv: list[str]) -> int:
             session=args.session,
             body=body,
             dry_run=args.dry_run,
+            suffix=args.suffix,
         )
+    except InvalidSuffixError as exc:
+        sys.stderr.write(f"state-append: {exc}\n")
+        return 2
     except SectionNotFoundError as exc:
         sys.stderr.write(f"state-append: section not found: {str(exc)!r}\n")
         return 1

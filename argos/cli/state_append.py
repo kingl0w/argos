@@ -32,6 +32,7 @@ from pathlib import Path
 from argos.cli.state_parser import parse as parse_state
 
 __all__ = [
+    "InvalidSuffixError",
     "SectionNotFoundError",
     "build_block",
     "generate_id",
@@ -41,10 +42,15 @@ __all__ = [
 _ID_SUFFIX_ALPHABET = "0123456789abcdef"
 _ID_SUFFIX_LENGTH = 6
 _ID_GENERATION_MAX_ATTEMPTS = 5
+_DISAMBIG_SUFFIX_RE = re.compile(r"^[a-z0-9-]+$")
 
 
 class SectionNotFoundError(Exception):
     """Raised when the requested ``## <section>`` heading is absent."""
+
+
+class InvalidSuffixError(ValueError):
+    """Raised when ``--suffix`` does not match ``^[a-z0-9-]+$``."""
 
 
 def _utc_now() -> datetime:
@@ -65,10 +71,13 @@ def generate_id(
     now: datetime | None = None,
     existing_ids: set[str] | None = None,
     rng: random.Random | None = None,
+    suffix: str | None = None,
 ) -> str:
     """Compose a globally-unique block ``id`` for ``ticket``.
 
-    Format: ``{UTC-ISO-timestamp}-{ticket}``. If that primary ID is already in
+    Format: ``{UTC-ISO-timestamp}-{ticket}[-{suffix}]``. When ``suffix`` is
+    provided, it must match ``^[a-z0-9-]+$`` (slug-shape) and is inserted
+    after the ticket segment. If the primary id is already in
     ``existing_ids``, retries with a 6-hex-char random suffix
     (``{primary}-{abcdef}``) until uniqueness, up to 5 attempts.
     """
@@ -79,7 +88,14 @@ def generate_id(
     if rng is None:
         rng = random.Random()
 
+    if suffix is not None and not _DISAMBIG_SUFFIX_RE.match(suffix):
+        raise InvalidSuffixError(
+            f"invalid suffix {suffix!r}: must match ^[a-z0-9-]+$"
+        )
+
     primary = f"{_format_timestamp(now)}-{ticket}"
+    if suffix is not None:
+        primary = f"{primary}-{suffix}"
     if primary not in existing_ids:
         return primary
 
@@ -187,6 +203,7 @@ def append_block(
     dry_run: bool = False,
     now: datetime | None = None,
     rng: random.Random | None = None,
+    suffix: str | None = None,
 ) -> str:
     """Atomically append a new block to ``state_file`` under ``## section``.
 
@@ -195,6 +212,7 @@ def append_block(
     Raises:
         SectionNotFoundError: ``## section`` heading is absent.
         FileNotFoundError: ``state_file`` does not exist (non-dry-run).
+        InvalidSuffixError: ``suffix`` does not match ``^[a-z0-9-]+$``.
     """
     state_path = Path(state_file)
 
@@ -206,7 +224,7 @@ def append_block(
             _find_section_bounds(existing_text.splitlines(), section)
         else:
             existing = set()
-        block_id = generate_id(ticket, now=now, existing_ids=existing, rng=rng)
+        block_id = generate_id(ticket, now=now, existing_ids=existing, rng=rng, suffix=suffix)
         return build_block(
             block_id=block_id,
             ticket=ticket,
@@ -225,7 +243,7 @@ def append_block(
 
         current_text = state_path.read_text(encoding="utf-8")
         existing = _existing_ids(current_text)
-        block_id = generate_id(ticket, now=now, existing_ids=existing, rng=rng)
+        block_id = generate_id(ticket, now=now, existing_ids=existing, rng=rng, suffix=suffix)
         block = build_block(
             block_id=block_id,
             ticket=ticket,
