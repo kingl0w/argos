@@ -90,6 +90,24 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-30T17:16:59Z-ARG1-063-done ticket=ARG1-063 author=verifier session=arg1-063-worktree -->
+- **ARG1-063 — verified** (branch `ticket/ARG1-063`, worktree `argos-v1-arg1-063`)
+  - Goal: convert `argos/cli/tests/test_state_parser.py` from pytest to unittest, restoring stdlib-only compliance per ADR-001 §Decision item 2 and ADR-002 §1.
+  - Files changed: `argos/cli/tests/test_state_parser.py` (mechanical translation, 13 tests).
+  - ACs: 6/6 met.
+    - AC#1 `grep -E '^(import pytest|from pytest)' …` → exit 1 (no matches).
+    - AC#2 `python3 -m unittest argos.cli.tests.test_state_parser -v` → Ran 13 tests, OK (0.104s). All 13 original test names preserved verbatim, now as methods on `ParseApiTests` (9) and `StateParseCLITests` (4).
+    - AC#3 count parity: original 13 (`git show main:…|grep -cE '^def test_'`), new 13 (`grep -cE '^    def test_' …`).
+    - AC#4 `python3 -m unittest discover -s argos/cli/tests` → Ran 148 tests, OK (4.983s). No collateral breakage.
+    - AC#5 ast import-allowlist check → exit 0 (bad=[]). Allowlist used as written in the ticket spec; `__future__`, `json`, `subprocess`, `sys`, `unittest`, `pathlib`, and `argos` are the only top-level imports.
+    - AC#6 `git diff main --name-only` → `argos/cli/tests/test_state_parser.py` only (this state-append produces the second expected path `argos/specs/v1.0/STATE.md`).
+  - Translation notes: `pytest.raises` → `unittest.TestCase.assertRaises` with `cm.exception`; module-level functions → methods on `ParseApiTests` / `StateParseCLITests`; `assert` → `self.assertEqual` / `self.assertIn` / `self.assertGreaterEqual` / `self.assertNotEqual` / `self.assertIsInstance` / `self.assertTrue`. No subTest or setUp/tearDown needed — original tests had no fixtures or parametrize.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Decision: pass
+  - Non-goal observation: this is the second planner-vs-shipped-spec deviation the verifier did not catch (first: ARG1-010 AC#3, drained via ARG1-057 + ADR-002 + ARG1-059). The ticket Non-goals section names ARG1-064 as the proposed follow-up to amend ARG1-030 with an import-allowlist AC; rubric NOT amended in this ticket.
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
