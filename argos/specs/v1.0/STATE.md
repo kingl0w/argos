@@ -90,17 +90,6 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
-
-<!-- argos:entry id=2026-04-30T16:33:29Z-ARG1-031-verify ticket=ARG1-031 author=verifier session=arg1-031-worktree -->
-- **[2026-04-30T16:32:19Z] ARG1-031 — verified** (session arg1-031-worktree, worktree `argos-v1-arg1-031`, branch `ticket/ARG1-031`)
-  - Files changed: `argos/cli/verifier_writeback.py` (new — stdlib-only wrapper that translates a `<!-- argos:verifier-output -->` block into a STATE.md body and routes it through `argos state-append`), `argos/cli/__main__.py` (registered `verifier-writeback` in `INTERNAL_SUBCOMMANDS`, help text, dispatch chain, docstring), `.claude/agents/verifier.md` (added `## STATE.md write — through the helper, never by hand` section directing the verifier to invoke `argos state-append` via the writeback wrapper), `argos/specs/v1.0/agents/verifier.md` (byte-identical mirror), `argos/cli/tests/test_verifier_writeback.py` (new — 9 tests across `FormatBodyTests` + `WritebackCLITests`), `argos/specs/v1.0/tickets/ARG1-031-verifier-writes-structured-decision.md` (Plan + Verification sections).
-  - ACs: 6/6 met. AC#1 pass case writes a `<!-- argos:entry ... author=verifier ... -->` block containing `ARG1-031` and the literal `verified`. AC#2 `pass-with-minors` with two minor findings emits `verified-with-minors`, both `file:line` refs, and `0 critical, 0 major, 2 minor`. AC#3 `fail` with `--stdout-file` embeds the verbatim test stdout fragment under a fenced `Test stdout:` block (`grep -Fc 'AssertionError: expected 0, got None'` = 2). AC#4 verifier's tool allowlist is `Read, Bash, Grep, Glob` — no Edit/Write; wrapper module imports only `append_block` for STATE.md writes. AC#5 `grep -Fc 'argos state-append' .claude/agents/verifier.md` = 4; mirror diff exits 0. AC#6 two concurrent `verifier-writeback` calls (different tickets) both append; 21 ids parsed, all unique; `argos state-parse` round-trips clean.
-  - Findings: 0 critical, 0 major, 0 minor.
-  - Tests: `python3 -m unittest argos.cli.tests.test_verifier_writeback -v` → 9 tests, all OK. Regression: `test_state_append test_verifier_parser test_frontmatter_parser test_escalation_validator test_version test_config test_verifier_writeback` → 98 tests, all OK. ADR-001 stdlib-only contract preserved (wrapper imports only `argparse`, `json`, `sys`, `pathlib`, `datetime` plus project modules); ADR-002 AC tooling stdlib-only (`grep -F`/`grep -E` + `python3 -c 'import json,sys; ...'` only).
-  - This block was written via `argos state-append --suffix verify`, dogfooding the helper. The merge driver reconciles concurrent appends with sibling tickets ARG1-020 / ARG1-041.
-  - Decision: pass
-<!-- /argos:entry -->
-
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
@@ -191,6 +180,28 @@ _none_
   - Audit: ARG1-059's ticket text does not enumerate a permitted-import allowlist; only ARG1-060 has the AC#1 pattern. Single-file edit.
   - Out of scope: no code changes to `argos frontmatter-parse`; no test changes (the existing `StdlibOnlyTests.test_module_imports_only_permitted_stdlib` is correct as written and continues to pass); no ADR-001 amendment (ADR-001 already endorses `__future__`; the gap was downstream in ticket prose only).
   - This corrects ARG1-060's shipped ticket text; ARG1-060's commit (562fc69) and the shipped frontmatter_parser module are unaffected.
+  - Decision: pass
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-30T16:33:29Z-ARG1-031-verify ticket=ARG1-031 author=verifier session=arg1-031-worktree -->
+- **[2026-04-30T16:32:19Z] ARG1-031 — verified** (session arg1-031-worktree, worktree `argos-v1-arg1-031`, branch `ticket/ARG1-031`)
+  - Files changed: `argos/cli/verifier_writeback.py` (new — stdlib-only wrapper that translates a `<!-- argos:verifier-output -->` block into a STATE.md body and routes it through `argos state-append`), `argos/cli/__main__.py` (registered `verifier-writeback` in `INTERNAL_SUBCOMMANDS`, help text, dispatch chain, docstring), `.claude/agents/verifier.md` (added `## STATE.md write — through the helper, never by hand` section directing the verifier to invoke `argos state-append` via the writeback wrapper), `argos/specs/v1.0/agents/verifier.md` (byte-identical mirror), `argos/cli/tests/test_verifier_writeback.py` (new — 9 tests across `FormatBodyTests` + `WritebackCLITests`), `argos/specs/v1.0/tickets/ARG1-031-verifier-writes-structured-decision.md` (Plan + Verification sections).
+  - ACs: 6/6 met. AC#1 pass case writes a `<!-- argos:entry ... author=verifier ... -->` block containing `ARG1-031` and the literal `verified`. AC#2 `pass-with-minors` with two minor findings emits `verified-with-minors`, both `file:line` refs, and `0 critical, 0 major, 2 minor`. AC#3 `fail` with `--stdout-file` embeds the verbatim test stdout fragment under a fenced `Test stdout:` block (`grep -Fc 'AssertionError: expected 0, got None'` = 2). AC#4 verifier's tool allowlist is `Read, Bash, Grep, Glob` — no Edit/Write; wrapper module imports only `append_block` for STATE.md writes. AC#5 `grep -Fc 'argos state-append' .claude/agents/verifier.md` = 4; mirror diff exits 0. AC#6 two concurrent `verifier-writeback` calls (different tickets) both append; 21 ids parsed, all unique; `argos state-parse` round-trips clean.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_verifier_writeback -v` → 9 tests, all OK. Regression: `test_state_append test_verifier_parser test_frontmatter_parser test_escalation_validator test_version test_config test_verifier_writeback` → 98 tests, all OK. ADR-001 stdlib-only contract preserved (wrapper imports only `argparse`, `json`, `sys`, `pathlib`, `datetime` plus project modules); ADR-002 AC tooling stdlib-only (`grep -F`/`grep -E` + `python3 -c 'import json,sys; ...'` only).
+  - This block was written via `argos state-append --suffix verify`, dogfooding the helper. The merge driver reconciles concurrent appends with sibling tickets ARG1-020 / ARG1-041.
+  - Decision: pass
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-30T16:51:07Z-ARG1-041-escalate-writer ticket=ARG1-041 author=verifier session=arg1-041-worktree -->
+- **[2026-04-30T16:46:49Z] ARG1-041 — `argos escalate` writer + optional webhook** (worktree `argos-v1-arg1-041`, branch `ticket/ARG1-041`)
+  - Files changed: `argos/cli/escalation.py` (new), `argos/cli/commands/escalate.py` (new), `argos/cli/tests/fixtures/__init__.py` (new), `argos/cli/tests/fixtures/test_webhook_server.py` (new), `argos/cli/tests/test_escalate.py` (new), `argos/cli/__main__.py` (registered `escalate` subcommand: `PUBLIC_SUBCOMMANDS` tuple, `--help` text, dispatcher branch), `argos/specs/v1.0/tickets/ARG1-041-escalation-writer-webhook.md` (Plan + Implementation notes + Verification appended).
+  - ACs: 7/7 met. AC#1 `argos escalate --ticket ARG1-099 --severity blocking --raised-by orchestrator --body 'test'` exits 0; the resulting file matches `ARG1-099-*.md` and `argos escalation-validate` exits 0. AC#2 webhook URL empty → recording loopback server captures zero requests after the run. AC#3 webhook URL set → exactly one POST with JSON keys `{ticket_id, severity, summary, file_path}`. AC#4 server returns 500 → exit 0, stderr contains `webhook delivery failed: 500`. AC#5 closed-port URL → exit 0 in well under 5s (urllib timeout 4.0s; ECONNREFUSED returns immediately); stderr contains `webhook delivery failed`. AC#6 `--severity invalid` → exit 2, stderr `severity must be blocking or advisory`. AC#7 two concurrent threads invoking the CLI produce two distinct files (collision tiebreaker is a 4-hex random filename suffix added under `os.O_CREAT | os.O_EXCL`); both validate.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_escalate -v` → 18 tests, all OK (Ran 18 tests in 1.819s). Regression sweep across `test_version test_verifier_parser test_escalation_validator test_state_append test_config test_frontmatter_parser test_escalate` → 107 tests, all OK (Ran 107 tests in 3.780s).
+  - Stdlib-only preserved: webhook transport is `urllib.request` (no `requests`); config loaded via the ARG1-053 loader. No `pyproject.toml` change. ADR-001 + ADR-002 contracts intact.
+  - Webhook auth: NONE. ARCHITECTURE.md §Technology choices line 252 explicit; config schema has no auth-related key; ticket Non-goals reaffirms. The `post_webhook` function is the choke point if a future ADR adds signed payloads.
+  - Layer 2 sibling coordination: only `argos/cli/__main__.py` is shared with ARG1-020 / ARG1-031. Three localized edits, "keep both registrations" merge pattern; subcommand names disjoint.
   - Decision: pass
 <!-- /argos:entry -->
 
