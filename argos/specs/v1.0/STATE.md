@@ -108,16 +108,6 @@ _none_
   - Non-goal observation: this is the second planner-vs-shipped-spec deviation the verifier did not catch (first: ARG1-010 AC#3, drained via ARG1-057 + ADR-002 + ARG1-059). The ticket Non-goals section names ARG1-064 as the proposed follow-up to amend ARG1-030 with an import-allowlist AC; rubric NOT amended in this ticket.
 <!-- /argos:entry -->
 
-
-<!-- argos:entry id=2026-04-30T17:40:38Z-ARG1-012-done ticket=ARG1-012 author=verifier session=sess-arg1-012-2026-04-30 -->
-- **[2026-04-30T17:00:00Z] ARG1-012 — verified** (dispatch log writer landed)
-  - Files changed: `argos/cli/dispatch_log.py` (new), `argos/cli/tests/test_dispatch_log.py` (new), `argos/specs/dispatch/.gitkeep` (new), `argos/specs/v1.0/tickets/ARG1-012-dispatch-log-writer.md` (Plan + Verification appended).
-  - All five ACs from ticket pass: file at canonical path (AC#1), six-key frontmatter via `argos frontmatter-parse | python3 -c json check` (AC#2), append grows file with byte-equal frontmatter (AC#3), dry-run produces no files under `argos/specs/dispatch/` (AC#4), two concurrent dispatches produce two distinct files (AC#5).
-  - Test suite: 164 unittest cases (16 new) green.
-  - Concurrency model: per-ticket files via `O_CREAT | O_EXCL` (precedent ARG1-041); same-file appends via `fcntl.flock` + `tempfile` + `os.replace` (precedent ARG1-051). Frontmatter region byte-stable across appends.
-  - Decision: pass
-<!-- /argos:entry -->
-
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
@@ -242,6 +232,34 @@ _none_
   - Library / shim split mirrors ARG1-051's pattern so the orchestrator (ARG1-022) can call `argos.cli.worktree` primitives in-process without spawning a subprocess. Harness binary resolution order: `ARGOS_RUN_SESSION_HARNESS_BIN` env override → ARG1-053 `harness.claude_code_binary` → `claude` on PATH. Three context env vars (`ARGOS_TICKET`, `ARGOS_EPIC`, `ARGOS_WORKTREE`) exported to the spawned child so downstream tooling does not have to re-parse argv.
   - Out of scope confirmed: no independence detection (ARG1-021), no parallel orchestration (ARG1-022), no merge-on-pass / three-way merge / pruning (ARG1-023). The argv used to load the planner subagent inside Claude Code is intentionally not pinned here — ARG1-022 wires it; ARG1-020 commits only to the cwd-pinning + ARGOS_* env-var contract.
   - File scope: did not touch `argos/verifier/` (ARG1-031's domain), `argos/escalation/` (ARG1-041's domain), or any STATE.md file directly. Conflict on `argos/cli/__main__.py` with sibling Layer 2 tickets is expected; resolution per session brief is "keep both registrations".
+  - Decision: pass
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-30T17:40:38Z-ARG1-012-done ticket=ARG1-012 author=verifier session=sess-arg1-012-2026-04-30 -->
+- **[2026-04-30T17:00:00Z] ARG1-012 — verified** (dispatch log writer landed)
+  - Files changed: `argos/cli/dispatch_log.py` (new), `argos/cli/tests/test_dispatch_log.py` (new), `argos/specs/dispatch/.gitkeep` (new), `argos/specs/v1.0/tickets/ARG1-012-dispatch-log-writer.md` (Plan + Verification appended).
+  - All five ACs from ticket pass: file at canonical path (AC#1), six-key frontmatter via `argos frontmatter-parse | python3 -c json check` (AC#2), append grows file with byte-equal frontmatter (AC#3), dry-run produces no files under `argos/specs/dispatch/` (AC#4), two concurrent dispatches produce two distinct files (AC#5).
+  - Test suite: 164 unittest cases (16 new) green.
+  - Concurrency model: per-ticket files via `O_CREAT | O_EXCL` (precedent ARG1-041); same-file appends via `fcntl.flock` + `tempfile` + `os.replace` (precedent ARG1-051). Frontmatter region byte-stable across appends.
+  - Decision: pass
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-04-30T17:42:38Z-ARG1-011-done ticket=ARG1-011 author=coder session=arg1-011-worktree -->
+- **ARG1-011 — `/orchestrate` slash command + `argos orchestrate` queue read** (worktree `argos-v1-arg1-011`, branch `ticket/ARG1-011`)
+  - Files changed: `.claude/commands/orchestrate.md` (new — slash command body referencing the orchestrator agent and the dispatch tool surface), `argos/specs/v1.0/commands/orchestrate.md` (new — byte-identical canonical mirror per the agent precedent), `argos/cli/queue.py` (new — stdlib-only `## Queue` section parser; `parse_queue` + `parse_queue_file`; `QueueSectionMissingError` / `StateFileNotFoundError`), `argos/cli/commands/orchestrate.py` (new — argparse shim; `--dry-run` is the only mode wired in v1.0 with non-`--dry-run` rejected since real dispatch is ARG1-022), `argos/cli/__main__.py` (modify — registered `orchestrate` in `PUBLIC_SUBCOMMANDS`, help line, dispatch branch; three localized edits, keep-both-registrations merge pattern), `argos/cli/tests/test_orchestrate.py` (new — 18 tests across `ParseQueueLibraryTests`, `OrchestrateCLITests`, `SlashCommandFileTests`), `argos/specs/v1.0/tickets/ARG1-011-orchestrate-slash-command.md` (Plan + Verification appended).
+  - ACs: 6/6 met (verified live).
+    - AC#1 `test -f .claude/commands/orchestrate.md` → exit 0.
+    - AC#2 `argos orchestrate --dry-run --state-file <three-ticket-fixture>` → exit 0; stdout `ARG1-022\nARG1-013\nARG1-023\n` in queue order.
+    - AC#3 `argos orchestrate --dry-run --state-file <empty-queue-fixture>` (placeholder italic only) → exit 0; stdout contains `queue empty`.
+    - AC#4 `argos orchestrate --dry-run --state-file /nonexistent.md` → exit 1; stderr `orchestrate: STATE.md not found: …`.
+    - AC#5 `grep -F 'orchestrator' .claude/commands/orchestrate.md` → exit 0.
+    - AC#6 `argos orchestrate --dry-run --batch-size 2 …` against four-ticket queue → exit 0; stdout has exactly two ids (`ARG1-001`, `ARG1-002`).
+  - Tests: `python3 -m unittest argos.cli.tests.test_orchestrate -v` → 18 tests, all OK (Ran 18 tests in 0.152s). Regression: `python3 -m unittest discover -s argos/cli/tests` → 166 tests, all OK (Ran 166 tests in 4.631s). No collateral breakage.
+  - Stdlib-only preserved: `argos.cli.queue` imports `re`, `pathlib`; `argos.cli.commands.orchestrate` imports `argparse`, `sys`, plus the project module. `pyproject.toml` unchanged. ADR-001 + ADR-002 contracts intact.
+  - Slash command mirror: `diff -q .claude/commands/orchestrate.md argos/specs/v1.0/commands/orchestrate.md` → exit 0 (byte-identical). Matches the established `.claude/agents/<name>.md` ↔ `argos/specs/v1.0/agents/<name>.md` mirror pattern (ARG1-010, ARG1-030).
+  - Out of scope confirmed: no parallel dispatch (ARG1-022), no worktree creation (ARG1-020), no independence analysis (ARG1-021), no escalation file production (ARG1-041), no edits to `.claude/agents/orchestrator.md`, `argos/specs/v1.0/agents/orchestrator.md`, `argos/cli/dispatch.py`, `argos/cli/dispatch_log.py`, `argos/verifier/`, `argos/escalation/`, `argos/orchestrator/`.
+  - Sibling Layer 2 coordination: only `argos/cli/__main__.py` is shared with the cohort; ARG1-012's `Touches` does not include `__main__.py`, so no sibling conflict expected. Per the keep-both-registrations precedent that ARG1-020 / ARG1-031 / ARG1-041 already merged.
+  - Findings: 0 critical, 0 major, 0 minor.
   - Decision: pass
 <!-- /argos:entry -->
 
