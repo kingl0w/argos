@@ -108,6 +108,16 @@ _none_
   - Non-goal observation: this is the second planner-vs-shipped-spec deviation the verifier did not catch (first: ARG1-010 AC#3, drained via ARG1-057 + ADR-002 + ARG1-059). The ticket Non-goals section names ARG1-064 as the proposed follow-up to amend ARG1-030 with an import-allowlist AC; rubric NOT amended in this ticket.
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-30T17:40:38Z-ARG1-012-done ticket=ARG1-012 author=verifier session=sess-arg1-012-2026-04-30 -->
+- **[2026-04-30T17:00:00Z] ARG1-012 — verified** (dispatch log writer landed)
+  - Files changed: `argos/cli/dispatch_log.py` (new), `argos/cli/tests/test_dispatch_log.py` (new), `argos/specs/dispatch/.gitkeep` (new), `argos/specs/v1.0/tickets/ARG1-012-dispatch-log-writer.md` (Plan + Verification appended).
+  - All five ACs from ticket pass: file at canonical path (AC#1), six-key frontmatter via `argos frontmatter-parse | python3 -c json check` (AC#2), append grows file with byte-equal frontmatter (AC#3), dry-run produces no files under `argos/specs/dispatch/` (AC#4), two concurrent dispatches produce two distinct files (AC#5).
+  - Test suite: 164 unittest cases (16 new) green.
+  - Concurrency model: per-ticket files via `O_CREAT | O_EXCL` (precedent ARG1-041); same-file appends via `fcntl.flock` + `tempfile` + `os.replace` (precedent ARG1-051). Frontmatter region byte-stable across appends.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
