@@ -90,6 +90,19 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-30T16:51:07Z-ARG1-041-escalate-writer ticket=ARG1-041 author=verifier session=arg1-041-worktree -->
+- **[2026-04-30T16:46:49Z] ARG1-041 — `argos escalate` writer + optional webhook** (worktree `argos-v1-arg1-041`, branch `ticket/ARG1-041`)
+  - Files changed: `argos/cli/escalation.py` (new), `argos/cli/commands/escalate.py` (new), `argos/cli/tests/fixtures/__init__.py` (new), `argos/cli/tests/fixtures/test_webhook_server.py` (new), `argos/cli/tests/test_escalate.py` (new), `argos/cli/__main__.py` (registered `escalate` subcommand: `PUBLIC_SUBCOMMANDS` tuple, `--help` text, dispatcher branch), `argos/specs/v1.0/tickets/ARG1-041-escalation-writer-webhook.md` (Plan + Implementation notes + Verification appended).
+  - ACs: 7/7 met. AC#1 `argos escalate --ticket ARG1-099 --severity blocking --raised-by orchestrator --body 'test'` exits 0; the resulting file matches `ARG1-099-*.md` and `argos escalation-validate` exits 0. AC#2 webhook URL empty → recording loopback server captures zero requests after the run. AC#3 webhook URL set → exactly one POST with JSON keys `{ticket_id, severity, summary, file_path}`. AC#4 server returns 500 → exit 0, stderr contains `webhook delivery failed: 500`. AC#5 closed-port URL → exit 0 in well under 5s (urllib timeout 4.0s; ECONNREFUSED returns immediately); stderr contains `webhook delivery failed`. AC#6 `--severity invalid` → exit 2, stderr `severity must be blocking or advisory`. AC#7 two concurrent threads invoking the CLI produce two distinct files (collision tiebreaker is a 4-hex random filename suffix added under `os.O_CREAT | os.O_EXCL`); both validate.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_escalate -v` → 18 tests, all OK (Ran 18 tests in 1.819s). Regression sweep across `test_version test_verifier_parser test_escalation_validator test_state_append test_config test_frontmatter_parser test_escalate` → 107 tests, all OK (Ran 107 tests in 3.780s).
+  - Stdlib-only preserved: webhook transport is `urllib.request` (no `requests`); config loaded via the ARG1-053 loader. No `pyproject.toml` change. ADR-001 + ADR-002 contracts intact.
+  - Webhook auth: NONE. ARCHITECTURE.md §Technology choices line 252 explicit; config schema has no auth-related key; ticket Non-goals reaffirms. The `post_webhook` function is the choke point if a future ADR adds signed payloads.
+  - Layer 2 sibling coordination: only `argos/cli/__main__.py` is shared with ARG1-020 / ARG1-031. Three localized edits, "keep both registrations" merge pattern; subcommand names disjoint.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
