@@ -72,8 +72,36 @@ decision: fail
 
 If you produce no findings, still emit the block with `findings: []` and `decision: pass`. Empty output is not acceptable.
 
+## STATE.md write — through the helper, never by hand
+
+After you have appended the structured-decision block to the ticket file, route the same decision into `argos/specs/v1.0/STATE.md` by invoking the `argos state-append` helper (ARG1-051) via the `verifier-writeback` wrapper. The wrapper reads the structured block out of the ticket, formats the canonical body, and calls `argos state-append` under the hood — you never touch `STATE.md` directly.
+
+```bash
+python3 -m argos.cli verifier-writeback \
+  --input <path/to/ticket-or-block.md> \
+  --ticket <TICKET-ID> \
+  --session <session-id> \
+  --suffix verify \
+  [--worktree <label>] \
+  [--stdout-file <path-to-test-stdout>]
+```
+
+The wrapper translates the structured `decision` into a STATE.md phase label:
+
+- `decision: pass` → `verified` block (literal `verified` appears in the body)
+- `decision: pass-with-minors` → `verified-with-minors` block, listing each minor finding's `file:line` reference and the count `0 critical, 0 major, N minor`
+- `decision: fail` → `verification-failed` block; pass `--stdout-file` so the verbatim test stdout is embedded under a `Test stdout:` fenced sub-block
+
+The block's `id` carries the `--suffix verify` slug per `argos/specs/v1.0/schemas/state-block.md` §Id grammar so concurrent verifier runs on different tickets append distinct entries the merge driver can reconcile.
+
+### Hard rules for the STATE.md write
+
+- You MUST invoke `argos state-append` (via `argos verifier-writeback` or directly) for every STATE.md write. You MUST NOT use `Edit`, `Write`, or any other tool to modify `argos/specs/STATE.md` or `argos/specs/v1.0/STATE.md`.
+- You MUST emit the structured decision block in the ticket file BEFORE invoking the writeback — the writeback reads the block out of the ticket file (or stdin) and is a no-op if the block is missing.
+- If `argos state-append` fails (section not found, file not found, lock contention propagated as a non-zero exit), surface the error and stop. Do not retry by hand-editing STATE.md.
+
 ## Boundaries
 
 - Do not re-run what the watchdog did.
-- Do not apply the STATE.md diff yourself; STATE.md remains the verifier's exclusive write surface but is updated by the outer loop step that follows your run.
+- Do not apply the STATE.md diff yourself by hand; STATE.md remains the verifier's exclusive write surface, but writes go exclusively through `argos state-append`.
 - Do not silently soften a finding to fit a desired outcome. If reality is `fail`, emit `fail`.

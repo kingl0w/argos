@@ -5,7 +5,9 @@ is routed by subcommand name. Subcommands fall into two groups:
 
 - **Implemented internal subcommands** delegate to existing reference modules:
   ``state-parse`` → :mod:`argos.cli.commands.state_parse`,
+  ``state-append`` → :mod:`argos.cli.commands.state_append`,
   ``verifier-parse`` → :mod:`argos.cli.verifier_parser`,
+  ``verifier-writeback`` → :mod:`argos.cli.verifier_writeback`,
   ``escalation-validate`` → :mod:`argos.cli.escalation_validator`,
   ``frontmatter-parse`` → :mod:`argos.cli.commands.frontmatter_parse`.
 - **Public-surface stubs** for ARG1-002 / ARG1-003 / ARG1-004 / ARG1-005:
@@ -35,6 +37,7 @@ INTERNAL_SUBCOMMANDS = (
     "state-parse",
     "state-append",
     "verifier-parse",
+    "verifier-writeback",
     "escalation-validate",
     "frontmatter-parse",
 )
@@ -63,6 +66,7 @@ def _print_usage(stream) -> None:
         "  state-parse           parse STATE.md append-mostly blocks\n"
         "  state-append          append a block to a STATE.md section\n"
         "  verifier-parse        parse a verifier-output structured block\n"
+        "  verifier-writeback    format a verifier block and append to STATE.md\n"
         "  escalation-validate   validate an escalation file against the schema\n"
         "  frontmatter-parse     parse YAML-subset frontmatter (ADR-002) to JSON\n"
         "\n"
@@ -122,6 +126,10 @@ def main(argv: list[str] | None = None) -> int:
         # verifier_parser.main expects argv starting with prog name; pass a
         # synthetic argv0 to preserve its existing contract.
         return verifier_parse_main(["argos", *rest])
+
+    if head == "verifier-writeback":
+        from argos.cli.verifier_writeback import main as verifier_writeback_main
+        return verifier_writeback_main(rest)
 
     if head == "escalation-validate":
         from argos.cli.escalation_validator import main as escalation_main
