@@ -90,6 +90,19 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-04-30T16:15:51Z-ARG1-020-done ticket=ARG1-020 author=verifier session=arg1-020-worktree -->
+- **[2026-04-30T00:00:00Z] ARG1-020 — verified** (worktree `argos-v1-arg1-020`, branch `ticket/ARG1-020`)
+  - Files changed: `argos/cli/worktree.py` (new — library: `compute_branch_name`, `find_repo_root`, `validate_worktree_path`, `worktree_path_listed`, `add_worktree`, `resolve_harness_binary`, `spawn_session`, plus typed exception classes), `argos/cli/commands/run_session.py` (new — argparse shim mapping library exceptions to AC stderr substrings; loads `harness.claude_code_binary` via ARG1-053 config best-effort), `argos/cli/__main__.py` (modify — registered `run-session` in `INTERNAL_SUBCOMMANDS`, dispatch branch, help line), `argos/cli/tests/test_run_session.py` (new — 19 tests across 3 classes), `argos/specs/v1.0/tickets/ARG1-020-worktree-spawn-helper.md` (Plan + Verification sections appended).
+  - ACs: 6/6 met (verified live in a hermetic temp git repo with `ARGOS_RUN_SESSION_HARNESS_BIN=/bin/true`). AC#1 `--dry-run` exits 0 with `branch: argos/ARG1-099` and absolute worktree path on stdout. AC#2 real run; `git worktree list` shows `ARG1-099-test`; `git branch --list argos/ARG1-099` non-empty. AC#3 worktree directory survives session exit (no auto-cleanup). AC#4 second dispatch exits 1 with `run-session: worktree already exists: <path>` on stderr; threaded concurrent-launch test confirms exactly one winner. AC#5 `/tmp/foo` exits 2 with `worktree must live under .argos/worktrees/`; relative paths outside `.argos/worktrees/` (`src/foo`) likewise rejected. AC#6 `--debug-print-cwd` prints exactly the absolute worktree path (not the repo root) and returns 0 without spawning the harness binary; regression test confirms the harness child observes `pwd == <worktree>` plus `ARGOS_TICKET` / `ARGOS_EPIC` / `ARGOS_WORKTREE` env vars.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_run_session -v` → 19 tests, all OK (Ran 19 tests in 0.478s). Regression sweep: `test_version test_verifier_parser test_escalation_validator test_state_append test_frontmatter_parser test_config test_run_session` → 108/108 OK. Stdlib-only preserved; `pyproject.toml` unchanged.
+  - Library / shim split mirrors ARG1-051's pattern so the orchestrator (ARG1-022) can call `argos.cli.worktree` primitives in-process without spawning a subprocess. Harness binary resolution order: `ARGOS_RUN_SESSION_HARNESS_BIN` env override → ARG1-053 `harness.claude_code_binary` → `claude` on PATH. Three context env vars (`ARGOS_TICKET`, `ARGOS_EPIC`, `ARGOS_WORKTREE`) exported to the spawned child so downstream tooling does not have to re-parse argv.
+  - Out of scope confirmed: no independence detection (ARG1-021), no parallel orchestration (ARG1-022), no merge-on-pass / three-way merge / pruning (ARG1-023). The argv used to load the planner subagent inside Claude Code is intentionally not pinned here — ARG1-022 wires it; ARG1-020 commits only to the cwd-pinning + ARGOS_* env-var contract.
+  - File scope: did not touch `argos/verifier/` (ARG1-031's domain), `argos/escalation/` (ARG1-041's domain), or any STATE.md file directly. Conflict on `argos/cli/__main__.py` with sibling Layer 2 tickets is expected; resolution per session brief is "keep both registrations".
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->

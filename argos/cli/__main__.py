@@ -37,6 +37,7 @@ INTERNAL_SUBCOMMANDS = (
     "verifier-parse",
     "escalation-validate",
     "frontmatter-parse",
+    "run-session",
 )
 
 # Mapping of ARG1-0NN follow-up tickets that implement each public stub.
@@ -65,6 +66,7 @@ def _print_usage(stream) -> None:
         "  verifier-parse        parse a verifier-output structured block\n"
         "  escalation-validate   validate an escalation file against the schema\n"
         "  frontmatter-parse     parse YAML-subset frontmatter (ADR-002) to JSON\n"
+        "  run-session           spawn a per-ticket session in a worktree (orchestrator)\n"
         "\n"
         "Run 'argos --version' to print the version.\n"
     )
@@ -130,6 +132,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "frontmatter-parse":
         from argos.cli.commands.frontmatter_parse import main as frontmatter_parse_main
         return frontmatter_parse_main(rest)
+
+    if head == "run-session":
+        from argos.cli.commands.run_session import main as run_session_main
+        return run_session_main(rest)
 
     sys.stderr.write(f"argos: unknown subcommand: {head}\n")
     return 2
