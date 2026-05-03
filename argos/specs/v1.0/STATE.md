@@ -132,6 +132,18 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-05-03T17:24:16Z-ARG1-022-done ticket=ARG1-022 author=verifier session=arg1-022-worktree -->
+- **[2026-05-03T17:30:00Z] ARG1-022 — verified** (worktree `argos-v1-arg1-022`, branch `ticket/ARG1-022`)
+  - Files changed: `argos/cli/orchestrator/dispatch.py` (new — `DispatchEntry` / `DispatchPlan` / `SessionOutcome` / `BatchResult` / `SessionRequest` dataclasses; `plan_dispatch` / `render_dry_run_table` / `dispatch_batch` / `default_session_runner` / `default_repo_root` / `default_short_sha`), `argos/cli/commands/orchestrate.py` (rewrite — real dispatch added, `--dry-run` upgraded to emit AC#6 markdown table when plans exist, fallback to id-list when not, `--epic` / `--ticket-dir` / `--max-parallel` flags; reads `orchestrator.max_parallel` from config), `argos/cli/tests/test_parallel_dispatch.py` (new — 19 tests across 6 classes), `argos/cli/tests/test_orchestrate.py` (one prior placeholder test renamed `test_no_dry_run_rejected` → `test_no_dry_run_without_epic_rejected` to match new `--epic` requirement; all other tests untouched), `argos/specs/v1.0/tickets/ARG1-022-parallel-dispatch.md` (Plan + Verification appended).
+  - ACs: 6/6 met. AC#1 live harness peak=3 concurrent `claude` PIDs (`ps -eo command` poll at 50 ms while orchestrate runs three sleep-1.5s sessions, max_parallel=3). AC#2 live harness wall=3.136s ≥ threshold 2.85s = 3 × 1.0s × 0.95. AC#3 live dispatch-log timestamps prove dependent (911,912) serialized + independent (913) overlaps with first dependent (911 dispatch=17:22:42Z, 913 dispatch=17:22:42Z, 912 dispatch=17:22:43Z). AC#4 stdout contains literal `independence detection failed; falling back to serial`. AC#5 4 worktrees post-dispatch = 1 main + 3 dispatched, no orphans. AC#6 `argos orchestrate --batch-size 5 --dry-run` emits canonical markdown table with `ticket_id | group | dispatch_order | parallel_with` columns.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_parallel_dispatch -v` → 19 tests, all OK (Ran 19 tests in 4.114s). Full sweep: `python3 -m unittest discover -s argos/cli/tests` → 248 tests, all OK (Ran 248 tests in 9.670s). Pre-flight: `python3 -m argos.cli lint-imports argos/` → exit 0. Stdlib-only preserved (new imports limited to `subprocess`, `threading`, `os` — all in the ARG1-064 allowlist); ADR-001 + ADR-002 contracts intact. `pyproject.toml` unchanged.
+  - Architectural choices (Q1–Q5 from session brief): (1) subprocess-managed concurrency via `threading.Thread` + `threading.Semaphore(max_parallel)` because `concurrent.futures` is not allowlisted; (2) partial-batch failure — option (a), peers continue, each outcome logged independently; auto-fix retry is ARG1-013's scope; (3) ARG1-032 pre-commit hook does not interact — dispatcher writes only to `argos/specs/dispatch/{epic}/{ticket}.md` via ARG1-012's writer, never STATE.md; (4) one-group-at-a-time hard barrier, no cross-group pipelining; (5) strict criterion consumed verbatim from `independence.partition` — false-serializations are ARG1-066's scope, no workarounds shipped.
+  - Sibling: ARG1-066 (queued behind Layer 2) replaces strict file-set disjointness with dynamic dry-run merge per ESC-ARG1-021. ARG1-013 (auto-fix retry), ARG1-023 (worktree merge/preserve), and ARG1-054 (cycle close) all build on this dispatcher's BatchResult / dispatch-log surface.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
