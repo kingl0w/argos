@@ -246,14 +246,14 @@ class OrchestrateCLITests(unittest.TestCase):
             self.assertEqual(res.returncode, 1)
             self.assertIn("Queue", res.stderr)
 
-    def test_no_dry_run_rejected(self) -> None:
-        # Real dispatch is ARG1-022; v1.0 only supports --dry-run.
+    def test_no_dry_run_without_epic_rejected(self) -> None:
+        # Real dispatch (ARG1-022) requires --epic; without it, exit 2.
         with tempfile.TemporaryDirectory() as td:
             state = Path(td) / "STATE.md"
             _write_state(state, _FULL_STATE)
             res = _run_cli("orchestrate", "--state-file", str(state))
             self.assertEqual(res.returncode, 2)
-            self.assertIn("--dry-run", res.stderr)
+            self.assertIn("--epic is required", res.stderr)
 
     def test_help_lists_orchestrate(self) -> None:
         res = _run_cli("--help")
