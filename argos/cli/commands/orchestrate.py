@@ -102,7 +102,52 @@ def _build_parser() -> argparse.ArgumentParser:
             "(default: read from config, falls back to 3)"
         ),
     )
+    parser.add_argument(
+        "--auto-fix-retries",
+        type=int,
+        default=None,
+        help=(
+            "override verifier.auto_fix_retries from config "
+            "(0 disables retry; >=1 enables exactly one retry per ticket; "
+            "the cap is hard-coded at 1 regardless of value)"
+        ),
+    )
     return parser
+
+
+def _resolve_auto_fix_retries(override: int | None) -> int:
+    """Return the effective ``auto_fix_retries`` value for this dispatch.
+
+    Resolution: explicit ``--auto-fix-retries`` flag →
+    ``verifier.auto_fix_retries`` from the config loader → ``0``
+    (the v1.0 schema default). Errors from the config loader are
+    swallowed for the same reason :func:`_resolve_max_parallel` does:
+    a missing or unreadable config file should not block real
+    dispatch on a value with a documented default.
+
+    Negative values are clamped to ``0`` (defensive — the schema
+    declares the type as int, but a negative value would never be
+    semantically valid here).
+    """
+    if override is not None:
+        return max(0, override)
+    try:
+        from argos.cli.config import KeyNotFoundError, load
+    except Exception:
+        return 0
+    try:
+        cfg = load()
+    except Exception:
+        return 0
+    try:
+        value = cfg.get("verifier.auto_fix_retries")
+    except KeyNotFoundError:
+        return 0
+    except Exception:
+        return 0
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return 0
+    return value
 
 
 def _resolve_max_parallel(override: int | None) -> int:
@@ -208,6 +253,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     max_parallel = _resolve_max_parallel(args.max_parallel)
+    auto_fix_retries = _resolve_auto_fix_retries(args.auto_fix_retries)
     batch_id = _compose_batch_id(datetime.now(timezone.utc), random.SystemRandom())
 
     repo_root = dispatch_module.default_repo_root()
@@ -222,6 +268,7 @@ def main(argv: list[str]) -> int:
         dispatch_root=dispatch_root,
         ticket_dir=args.ticket_dir,
         info_stream=sys.stdout,
+        auto_fix_retries=auto_fix_retries,
     )
 
     failed = [o for o in result.outcomes if o.returncode != 0]
