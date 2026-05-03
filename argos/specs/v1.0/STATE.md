@@ -108,6 +108,19 @@ _none_
   - Non-goal observation: this is the second planner-vs-shipped-spec deviation the verifier did not catch (first: ARG1-010 AC#3, drained via ARG1-057 + ADR-002 + ARG1-059). The ticket Non-goals section names ARG1-064 as the proposed follow-up to amend ARG1-030 with an import-allowlist AC; rubric NOT amended in this ticket.
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-05-02T15:53:51Z-ARG1-021-done ticket=ARG1-021 author=verifier session=arg1-021-worktree -->
+- **[2026-05-02T15:49:14Z] ARG1-021 — file-overlap independence detection** (worktree `argos-v1-arg1-021`, branch `ticket/ARG1-021`)
+  - Files changed: `argos/cli/orchestrator/__init__.py` (new), `argos/cli/orchestrator/independence.py` (new — library; `Ticket` / `PairResult` / `load_ticket` / `is_independent` / `partition`), `argos/cli/commands/independence.py` (new — CLI shim), `argos/cli/__main__.py` (registered `independence` in `PUBLIC_SUBCOMMANDS`, `--help` line, dispatcher branch), `argos/cli/tests/test_independence.py` (new — 28 tests across 6 classes), `.claude/agents/planner.md` (added `files_touched:` requirement to the ## Plan output contract), `argos/specs/v1.0/agents/planner.md` (new — byte-identical mirror), `argos/specs/v1.0/tickets/ARG1-021-independence-detection.md` (Plan + Verification appended), `argos/specs/escalations/ARG1-021-2026-05-02T15-49-14Z.md` (new — advisory escalation).
+  - Criterion: **strict file-set disjointness + depends_on exclusion**, exact wording from ARCHITECTURE.md §Independence detection line 106 and orchestrator agent doc lines 89–94. Three canonical sources aligned. The ticket spec, the architecture doc, and the orchestrator agent doc all forbid carve-outs at this layer.
+  - ACs: 6/6 met (verified live in a tmp ticket-dir fixture via `python3 argos/cli/argos independence ...`). AC#1 disjoint → exit 0 stdout `independent`. AC#2 shared file → exit 0 stdout `dependent` + path. AC#3 depends_on flow-style → exit 0 stdout `dependent` + `depends_on`. AC#4 missing field → exit 2 stderr `ARG1-103: missing files_touched in ## Plan section`. AC#5 `--json` → JSON object with `groups` list-of-lists (ARG1-099 + ARG1-101 correctly placed in different groups since they share argos/cli/a.py). AC#6 `grep -F 'files_touched:' .claude/agents/planner.md` exit 0 (7 matches); `diff -q` against v1.0 mirror exit 0.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_independence -v` → 28 tests, all OK (Ran 28 tests in 0.216s). Regression: `python3 -m unittest discover -s argos/cli/tests` → 210 tests, all OK (Ran 210 tests in 4.729s). Stdlib-only preserved (`re`, `json`, `argparse`, `sys`, `pathlib`, `dataclasses`, `typing` plus `__future__`); ADR-001 + ADR-002 contracts intact. `pyproject.toml` unchanged.
+  - Escalation filed (advisory, not blocking): `argos/specs/escalations/ARG1-021-2026-05-02T15-49-14Z.md`. Empirical evidence (ARG1-011/012 + ARG1-020/031/041 all touched `argos/cli/__main__.py` and merged cleanly under "keep both registrations") suggests the strict criterion will falsely serialize Layer-2-shaped batches. Two relaxation options enumerated (Option A — hard-coded carve-out allowlist; Option B — merge-strategy-aware criterion); both require operator decision + ADR amendment to ARCHITECTURE.md §Independence detection. ARG1-022 inherits the strict criterion until that ADR lands; per ARCHITECTURE.md §Invariants line 274 this is "degraded but correct."
+  - Sibling Layer-2 coordination: only `argos/cli/__main__.py` is shared with the cohort; three localized edits (`PUBLIC_SUBCOMMANDS` tuple, `_print_usage` line, dispatcher branch) under the keep-both-registrations precedent already established by ARG1-011 / ARG1-012 / ARG1-020 / ARG1-031 / ARG1-041.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
