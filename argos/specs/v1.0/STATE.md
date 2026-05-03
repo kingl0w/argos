@@ -121,6 +121,17 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-05-03T16:53:42Z-ARG1-064-done ticket=ARG1-064 author=verifier session=arg1-064-worktree -->
+- **[2026-05-03T00:00:00Z] ARG1-064 — verified** (worktree `argos-v1-arg1-064`, branch `ticket/ARG1-064`)
+  - Files changed: `argos/cli/lint_imports.py` (new), `argos/cli/__main__.py` (registered `lint-imports` subcommand), `argos/cli/tests/test_lint_imports.py` (new, 19 tests), `argos/cli/tests/fixtures/lint_imports/bad_import.py` (new fixture), `.claude/agents/verifier.md` + `argos/specs/v1.0/agents/verifier.md` (Semantic check #4 added — `argos lint-imports argos/`), `argos/specs/v1.0/tickets/ARG1-030-verifier-severity-rubric.md` (Amendment (ARG1-064) appendix per AC#8).
+  - ACs: 10/10 met. AC#1 `lint-imports --help` exits 0; subcommand listed under INTERNAL_SUBCOMMANDS. AC#2 module imports only the AC#2 allowlist (argparse, ast, sys, pathlib, __future__). AC#3 `argos lint-imports argos/` exits 0 against this branch — current tree clean. AC#4 fixture emits canonical `lint-imports: bad_import.py:1: forbidden import requests`, exit 1. AC#5 missing path emits `lint-imports: /nonexistent/path: not found`, exit 1. AC#6 `STDLIB_ALLOWLIST` literal with ADR-001 docstring pointer — required minimum (argparse, re, dataclasses, pathlib, json, datetime, __future__, argos) present. AC#7 verifier rubric updated in both canonical and Claude Code mirror, byte-identical (`diff -q` exits 0), tool allowlist unchanged. AC#8 Amendment (ARG1-064) appended to ARG1-030 with prose, ARG1-010/ARG1-050 precedent citation, branch reference. AC#9 19 tests covering stdlib pass / single forbidden / ImportFrom / dotted internal / multiple violations / recursion / not-found. AC#10 `python3 -m unittest discover -s argos/cli/tests` → 229 tests, all OK (≥154).
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_lint_imports -v` → 19 tests, all OK (Ran 19 tests in 0.179s). Full sweep: `python3 -m unittest discover -s argos/cli/tests` → 229 tests, all OK (Ran 229 tests in 4.915s). Pre-flight: `python3 -m argos.cli lint-imports argos/` exits 0.
+  - Sibling: ARG1-032 holds the pre-commit-hook scope (file-disjoint per dispatch plan); this ticket is verifier-rubric enforcement only, no CI/hook surface touched.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->

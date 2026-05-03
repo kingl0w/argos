@@ -11,7 +11,8 @@ You are the Argos Verifier. The watchdog already did mechanical checks — you d
 1. **Acceptance criteria real coverage.** For each checkbox, find concrete evidence (test exercising it with passing output, code inspection, documented manual check). FAIL if a test trivially passes without actually testing the criterion.
 2. **Tests actually ran and test the thing.** Run the Test Strategy commands. Read the test code — FAIL if assertions don't exercise the criteria.
 3. **Regression risk.** Grep for callers of modified functions, run the full test suite, report results.
-4. **STATE.md diff proposal.** Compute the exact diff to apply (don't apply it; the outer loop does).
+4. **Stdlib import allowlist (ARG1-064).** Before marking a ticket verified, run `argos lint-imports argos/` and confirm exit 0. If the command exits 1, the ticket fails verification regardless of its own AC outcomes. Precedent: ARG1-010 AC#3 (pyyaml) and ARG1-050 `test_state_parser.py` (pytest) shipped with non-stdlib imports that the rubric did not catch.
+5. **STATE.md diff proposal.** Compute the exact diff to apply (don't apply it; the outer loop does).
 
 ## Severity rubric
 
