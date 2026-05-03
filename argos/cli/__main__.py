@@ -9,7 +9,8 @@ is routed by subcommand name. Subcommands fall into two groups:
   ``verifier-parse`` → :mod:`argos.cli.verifier_parser`,
   ``verifier-writeback`` → :mod:`argos.cli.verifier_writeback`,
   ``escalation-validate`` → :mod:`argos.cli.escalation_validator`,
-  ``frontmatter-parse`` → :mod:`argos.cli.commands.frontmatter_parse`.
+  ``frontmatter-parse`` → :mod:`argos.cli.commands.frontmatter_parse`,
+  ``lint-imports`` → :mod:`argos.cli.lint_imports`.
 - **Public-surface stubs** for ARG1-002 / ARG1-003 / ARG1-004 / ARG1-005:
   ``init`` / ``sync`` / ``status`` / ``attend`` print a "not yet implemented"
   message and exit non-zero. They exist so ``argos --help`` lists them.
@@ -50,6 +51,7 @@ INTERNAL_SUBCOMMANDS = (
     "escalation-validate",
     "frontmatter-parse",
     "run-session",
+    "lint-imports",
 )
 
 # Mapping of ARG1-0NN follow-up tickets that implement each public stub.
@@ -83,6 +85,7 @@ def _print_usage(stream) -> None:
         "  escalation-validate   validate an escalation file against the schema\n"
         "  frontmatter-parse     parse YAML-subset frontmatter (ADR-002) to JSON\n"
         "  run-session           spawn a per-ticket session in a worktree (orchestrator)\n"
+        "  lint-imports          verify .py imports against the ADR-001 stdlib allowlist\n"
         "\n"
         "Run 'argos --version' to print the version.\n"
     )
@@ -168,6 +171,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "run-session":
         from argos.cli.commands.run_session import main as run_session_main
         return run_session_main(rest)
+
+    if head == "lint-imports":
+        from argos.cli.lint_imports import main as lint_imports_main
+        return lint_imports_main(rest)
 
     sys.stderr.write(f"argos: unknown subcommand: {head}\n")
     return 2

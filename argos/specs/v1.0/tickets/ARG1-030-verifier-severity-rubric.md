@@ -126,3 +126,16 @@ Severity tagging by the verifier (per ARCHITECTURE.md §Severity-Tiered Verifier
 - No edits to `argos/specs/v1.0/PRD.md`, `argos/specs/v1.0/ARCHITECTURE.md`, or any other ticket's `.md`.
 - `STATE.md` is appended only at the very end of `/next` by the verifier — coder must not touch it.
 - `.claude/agents/verifier.md` and `argos/specs/v1.0/agents/verifier.md` must be byte-identical (use `cp`, not retype).
+
+## Amendment (ARG1-064)
+
+**Date:** 2026-05-03
+**Author:** ARG1-064 (lint-imports + verifier rubric amendment)
+
+The verifier rubric is amended to add a new pre-verification check: before marking any ticket verified, the verifier MUST run `argos lint-imports argos/` (the structured stdlib import-allowlist linter introduced by ARG1-064 / `argos/cli/lint_imports.py`) and confirm exit 0. If the command exits 1, the ticket fails verification regardless of its own AC outcomes; the failure is reported as a **critical** finding citing each emitted `lint-imports: <relpath>:<line>: forbidden import <name>` line.
+
+This check is now §Semantic checks item 4 in both `argos/specs/v1.0/agents/verifier.md` (canonical) and `.claude/agents/verifier.md` (Claude Code mirror); the legacy "STATE.md diff proposal" is renumbered to item 5. The verifier's tool allowlist (Read, Bash, Grep, Glob) is unchanged — `lint-imports` is invoked via Bash.
+
+**Precedent.** Two structurally-checkable deviations slipped past the rubric in v1.0: ARG1-010 AC#3 satisfied non-portably with `import yaml` despite ADR-001 stdlib-only (drained via ARG1-057 → ADR-002 → ARG1-059), and ARG1-050's `test_state_parser.py` shipped with `import pytest` at module level (drained via ARG1-063). Both were detectable by an AST walk of imports against a fixed allowlist; this amendment makes that walk a non-bypassable verifier step.
+
+**Implementation.** ARG1-064 — see branch `ticket/ARG1-064`, ticket file `argos/specs/v1.0/tickets/ARG1-064-lint-imports-verifier-rubric.md`, module `argos/cli/lint_imports.py`. Per ARG1-062's clarifying-via-appendix pattern, the original ARG1-030 plan and ACs are preserved unchanged above; this section is the durable record of the rubric change.
