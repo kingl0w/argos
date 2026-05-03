@@ -159,15 +159,80 @@ class OrchestrateCLITests(unittest.TestCase):
     """End-to-end ``argos orchestrate --dry-run`` checks against the launcher."""
 
     def test_dry_run_lists_queue(self) -> None:
+        # ARG1-022 AC#6 ships the canonical markdown table format with
+        # columns ticket_id / group / dispatch_order / parallel_with as
+        # the dry-run output when every queued ticket loads with a
+        # ``files_touched:`` Plan section. Pin --ticket-dir to a tempdir
+        # with synthetic frontmatter so independence detection runs
+        # against deterministic fixtures, not the live tickets/ tree.
+        # Assertions check structure (header + three data rows with four
+        # cells each) rather than specific group/dispatch_order values
+        # to avoid re-coupling to detection internals (AC#2c).
         with tempfile.TemporaryDirectory() as td:
             state = Path(td) / "STATE.md"
             _write_state(state, _FULL_STATE)
-            res = _run_cli("orchestrate", "--dry-run", "--state-file", str(state))
-            self.assertEqual(res.returncode, 0, msg=res.stderr)
-            self.assertEqual(
-                res.stdout.splitlines(),
-                ["ARG1-022", "ARG1-013", "ARG1-023"],
+            tickets = Path(td) / "tickets"
+            tickets.mkdir()
+            for tid, touched in (
+                ("ARG1-022", "argos/synthetic/a.py"),
+                ("ARG1-013", "argos/synthetic/b.py"),
+                ("ARG1-023", "argos/synthetic/c.py"),
+            ):
+                (tickets / f"{tid}.md").write_text(
+                    "---\n"
+                    f"id: {tid}\n"
+                    "---\n"
+                    "\n"
+                    "## Plan\n"
+                    "\n"
+                    "files_touched:\n"
+                    f"  - {touched}\n",
+                    encoding="utf-8",
+                )
+            res = _run_cli(
+                "orchestrate",
+                "--dry-run",
+                "--state-file",
+                str(state),
+                "--ticket-dir",
+                str(tickets),
             )
+            self.assertEqual(res.returncode, 0, msg=res.stderr)
+            lines = res.stdout.splitlines()
+            header_rows = [
+                line for line in lines
+                if "ticket_id" in line
+                and "group" in line
+                and "dispatch_order" in line
+                and "parallel_with" in line
+            ]
+            self.assertEqual(
+                len(header_rows), 1,
+                msg=(
+                    "expected exactly one AC#6 header row in dry-run "
+                    f"stdout, got:\n{res.stdout}"
+                ),
+            )
+            data_rows_by_id: dict[str, list[str]] = {}
+            for line in lines:
+                if not line.startswith("|"):
+                    continue
+                cells = [c.strip() for c in line.strip("|").split("|")]
+                if len(cells) != 4 or cells[0] == "ticket_id":
+                    continue
+                data_rows_by_id.setdefault(cells[0], []).append(line)
+            for tid in ("ARG1-022", "ARG1-013", "ARG1-023"):
+                rows = data_rows_by_id.get(tid, [])
+                self.assertEqual(
+                    len(rows), 1,
+                    msg=f"expected one data row for {tid}, got {rows}",
+                )
+                cells = [c.strip() for c in rows[0].strip("|").split("|")]
+                self.assertEqual(cells[0], tid)
+                # group + dispatch_order are independence-detector outputs
+                # (AC#2c — assert non-empty rather than specific values).
+                self.assertNotEqual(cells[1], "")
+                self.assertNotEqual(cells[2], "")
 
     def test_dry_run_empty_queue_emits_marker(self) -> None:
         with tempfile.TemporaryDirectory() as td:

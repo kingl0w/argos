@@ -156,6 +156,14 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-05-03T18:30:10Z-ARG1-067-done ticket=ARG1-067 author=verifier session=arg1-067 -->
+- **[2026-05-03T00:00:00Z] ARG1-067 — `test_dry_run_lists_queue` updated for ARG1-022 markdown table format** (worktree `argos-v1-arg1-067`, branch `ticket/ARG1-067`)
+  - Files changed: `argos/cli/tests/test_orchestrate.py` (only `test_dry_run_lists_queue`; pinned `--ticket-dir` to a tempdir with synthetic ARG1-022/ARG1-013/ARG1-023 frontmatter, replaced flat-id-list assertion with structural assertions over the AC#6 markdown table — header row with `ticket_id` / `group` / `dispatch_order` / `parallel_with`, plus three data rows whose `ticket_id` cell matches and `group` / `dispatch_order` cells are non-empty).
+  - ACs: 6/6 met. AC#1 `python3 -m unittest argos.cli.tests.test_orchestrate.OrchestrateCLITests.test_dry_run_lists_queue` exits 0. AC#2 header row + per-ticket data row asserted; group/dispatch_order asserted non-empty (no specific values), so independence-detector internals (group numbers, dispatch order, parallel siblings) stay decoupled from the test. AC#3 `--ticket-dir` pinned to `tempdir/tickets/` containing `ARG1-022.md` / `ARG1-013.md` / `ARG1-023.md` with disjoint `files_touched:` lists; mirrors the pinning pattern of `test_dry_run_batch_size_caps_output` and `test_dry_run_batch_size_larger_than_queue`. AC#4 `python3 -m unittest discover -s argos/cli/tests` → 279 tests OK, count unchanged from main. AC#5 `python3 -m argos.cli lint-imports argos/` exit 0. AC#6 `git diff main -- argos/cli/tests/test_orchestrate.py` shows changes only to `test_dry_run_lists_queue` plus its synthetic-ticket fixture lines; no library code touched (`parse_queue_file`, `orchestrate.py`, `dispatch.py` untouched).
+  - Unblocks ARG1-054 (cycle close) — the failing test was the last blocker on its merge gate.
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
