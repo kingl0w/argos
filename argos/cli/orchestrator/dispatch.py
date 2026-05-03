@@ -358,6 +358,8 @@ def _run_one_session(
     dispatch_root: Path,
     short_sha: str,
     session_runner: SessionRunner,
+    retry_config=None,
+    retry_runner: Optional[SessionRunner] = None,
 ) -> SessionOutcome:
     """Dispatch one ticket's session and write its dispatch log.
 
@@ -365,6 +367,16 @@ def _run_one_session(
     invoked; ``verifier-result`` is written after it returns. Both
     writes go to ``argos/specs/dispatch/{epic_id}/{ticket_id}.md`` via
     ARG1-012's writer.
+
+    When ``retry_config`` is provided (any value, ``enabled`` True or
+    False), ARG1-013's :func:`retry_module.maybe_retry` is invoked
+    after the inner runner returns. ``maybe_retry`` reads the
+    verifier's structured decision from the worktree's ticket file and
+    either runs a single retry (cap-1, only when enabled), writes a
+    blocking escalation, or both. The final ``verifier-result`` event
+    body carries the final returncode, duration, decision, and a
+    ``retried: true|false`` marker so downstream consumers can grep
+    either signal.
 
     Per ticket Q3 confirmation: this function never touches STATE.md,
     so the ARG1-032 pre-commit hook is irrelevant on this code path.
@@ -417,21 +429,47 @@ def _run_one_session(
             finished_at=finished_at,
         )
 
+    final_rc = rc
+    final_decision: Optional[str] = None
+    retried = False
+    if retry_config is not None:
+        # Lazy import to break the dispatch ↔ retry circular dependency
+        # (retry.py imports SessionRequest / SessionRunner from this
+        # module). The cycle is benign at run time but Python's import
+        # system serializes module init, so we defer until needed.
+        from argos.cli.orchestrator import retry as retry_module
+
+        outcome = retry_module.maybe_retry(
+            req=request,
+            initial_returncode=rc,
+            dispatch_file=log_path,
+            config=retry_config,
+            retry_runner=retry_runner,
+        )
+        final_rc = outcome.final_returncode
+        final_decision = outcome.final_decision
+        retried = outcome.retried
+
     finished_at = _utc_now()
+    body_lines = [
+        f"- returncode: {final_rc}",
+        f"- duration_s: {(finished_at - started_at).total_seconds():.3f}",
+    ]
+    if final_decision is not None:
+        body_lines.append(f"- decision: {final_decision}")
+    if retry_config is not None:
+        body_lines.append(f"- retried: {'true' if retried else 'false'}")
     dispatch_log.append_event(
         dispatch_file=log_path,
         event_type=dispatch_log.EVENT_VERIFIER_RESULT,
-        body=(
-            f"- returncode: {rc}\n"
-            f"- duration_s: {(finished_at - started_at).total_seconds():.3f}"
-        ),
+        body="\n".join(body_lines),
         at=finished_at,
     )
     return SessionOutcome(
         ticket_id=ticket_id,
         worktree_path=worktree_path,
         branch=branch,
-        returncode=rc,
+        returncode=final_rc,
         started_at=started_at,
         finished_at=finished_at,
     )
@@ -447,6 +485,8 @@ def _dispatch_group(
     dispatch_root: Path,
     short_sha: str,
     session_runner: SessionRunner,
+    retry_config=None,
+    retry_runner: Optional[SessionRunner] = None,
 ) -> list[SessionOutcome]:
     """Dispatch one independence group under a semaphore-bounded slot pool.
 
@@ -472,6 +512,8 @@ def _dispatch_group(
                 dispatch_root=dispatch_root,
                 short_sha=short_sha,
                 session_runner=session_runner,
+                retry_config=retry_config,
+                retry_runner=retry_runner,
             )
         with outcomes_lock:
             outcomes.append(outcome)
@@ -504,6 +546,10 @@ def dispatch_batch(
     short_sha: Optional[str] = None,
     info_stream=None,
     session_runner: Optional[SessionRunner] = None,
+    auto_fix_retries: int = 0,
+    retry_runner: Optional[SessionRunner] = None,
+    escalation_dir: Optional[Path] = None,
+    ticket_dir_in_worktree: Optional[str] = None,
 ) -> BatchResult:
     """Dispatch a batch of tickets and return per-session outcomes.
 
@@ -520,6 +566,30 @@ def dispatch_batch(
 
     ``session_runner`` is the test seam — defaults to spawning ``argos
     run-session`` as a subprocess.
+
+    ARG1-013 retry hooks (added without changing the existing public
+    contract — defaults are no-op):
+
+    - ``auto_fix_retries`` mirrors ``verifier.auto_fix_retries`` from
+      config. ``0`` (default) preserves prior behavior with one
+      addition: a verifier ``decision: fail`` written to the worktree's
+      ticket file produces a blocking escalation immediately. Any
+      value ``>= 1`` enables exactly one retry pass per ticket; the
+      cap is hard-coded.
+    - ``retry_runner`` is the test seam for the retry pass; defaults
+      to :func:`argos.cli.orchestrator.retry.default_retry_runner`,
+      which re-spawns the harness in the existing worktree via
+      :func:`argos.cli.worktree.spawn_session`.
+    - ``escalation_dir`` defaults to
+      ``<repo_root>/argos/specs/escalations``.
+    - ``ticket_dir_in_worktree`` defaults to
+      ``argos/specs/v1.0/tickets`` (the verifier-output schema's
+      location pin).
+
+    When the runner returncode is the only failure signal (no
+    verifier-output block was ever written, e.g. a stub runner in
+    tests), no retry runs and no escalation is written — verifier
+    signals are the contract surface, returncodes are not.
     """
     if max_parallel < 1:
         raise ValueError(f"max_parallel must be >= 1 (got {max_parallel})")
@@ -527,6 +597,10 @@ def dispatch_batch(
         raise ValueError("epic_id must be a non-empty string")
     if not batch_id:
         raise ValueError("batch_id must be a non-empty string")
+    if auto_fix_retries < 0:
+        raise ValueError(
+            f"auto_fix_retries must be >= 0 (got {auto_fix_retries})"
+        )
 
     if repo_root is None:
         repo_root = default_repo_root()
@@ -540,6 +614,30 @@ def dispatch_batch(
         info_stream = sys.stdout
     if session_runner is None:
         session_runner = default_session_runner
+
+    # Build the retry config once per batch. ``None`` means "preserve
+    # the strict ARG1-022 behavior" — no decision read, no escalation,
+    # no retry. Any non-None value (even ``enabled=False``) opts the
+    # batch into ARG1-013's verifier-decision-aware code path.
+    retry_config = None
+    if auto_fix_retries is not None:
+        from argos.cli.orchestrator import retry as retry_module
+
+        if escalation_dir is None:
+            escalation_dir_resolved = repo_root / "argos" / "specs" / "escalations"
+        else:
+            escalation_dir_resolved = Path(escalation_dir)
+        if ticket_dir_in_worktree is None:
+            ticket_dir_in_worktree_resolved = (
+                retry_module.DEFAULT_TICKET_DIR_IN_WORKTREE
+            )
+        else:
+            ticket_dir_in_worktree_resolved = ticket_dir_in_worktree
+        retry_config = retry_module.RetryConfig(
+            enabled=auto_fix_retries >= 1,
+            escalation_dir=escalation_dir_resolved,
+            ticket_dir_in_worktree=ticket_dir_in_worktree_resolved,
+        )
 
     plan = plan_dispatch(ticket_ids, ticket_dir=ticket_dir)
     if plan.serial_fallback:
@@ -562,6 +660,8 @@ def dispatch_batch(
             dispatch_root=dispatch_root,
             short_sha=short_sha,
             session_runner=session_runner,
+            retry_config=retry_config,
+            retry_runner=retry_runner,
         )
         all_outcomes.extend(group_outcomes)
 

@@ -107,14 +107,16 @@ These are caught downstream — at the **verifier** of the second-merging ticket
 
 ## Auto-fix retry behavior (contract only)
 
-This section is the contract; ARG1-013 implements the retry loop.
+This section is the contract; ARG1-013's `argos/cli/orchestrator/retry.py` implements it. Every claim below is testable against `argos/cli/tests/test_retry.py`.
 
 On `decision: fail` from the verifier:
 
-- Re-dispatch the **same ticket** through planner → coder → watchdog → verifier inside the **same worktree** (do not spawn a new worktree; the partial state is informative for the retry).
+- Re-dispatch the **same ticket** through planner → coder → watchdog → verifier inside the **same worktree** (do not spawn a new worktree; the partial state is informative for the retry). Implementation: the retry runner bypasses `argos run-session` (which refuses to reuse worktrees by contract) and re-spawns the harness directly via `argos.cli.worktree.spawn_session` against the existing path.
 - The retry preserves the ticket's `## Plan`. The planner is invoked in re-plan mode (it may amend the plan; the watchdog's "silent plan edits" probe checks for unauthorized edits).
-- **Cap: 1 retry.** Hard cap. Configurable only as enabled / disabled (`verifier.auto_fix_retries`), not as a higher integer.
+- **Cap: 1 retry.** Hard cap. Configurable only as enabled / disabled (`verifier.auto_fix_retries`); any value `>= 1` enables exactly one retry, `0` disables. Higher integers do not raise the cap.
+- The retry pass appends a `type=retry` event to the dispatch log (`argos/specs/dispatch/{epic}/{ticket}.md`) carrying a fresh `- session: <original>-retry-1` line. After the retry's runner returns, the final `type=verifier-result` event body lists `- decision: <literal>` and `- retried: true|false`. Counting distinct `- session:` values in the file therefore answers "did a retry happen" without parsing event bodies.
 - If the retry's verifier still emits `decision: fail` (or `tests_ran: false`) → write an escalation file `raised_by: orchestrator`, `severity: blocking`, leave the worktree intact, mark the ticket failed in the dispatch log, do not attempt a second retry.
+- When `verifier.auto_fix_retries == 0` (retry disabled) and the verifier emits `decision: fail`, an escalation is still written immediately on the first fail — disabled does not mean "ignore."
 
 The orchestrator does not write to STATE.md during retry — both the fail and the retry-fail are surfaced via the verifier's STATE.md blocks (the verifier inside the session is still the sole STATE.md writer). You only append a §Known drift entry if the retry leaves the worktree in a state inconsistent with §In progress (a reconciliation, not a verification claim).
 

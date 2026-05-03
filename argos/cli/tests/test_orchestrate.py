@@ -187,9 +187,17 @@ class OrchestrateCLITests(unittest.TestCase):
             self.assertIn("STATE.md not found", res.stderr)
 
     def test_dry_run_batch_size_caps_output(self) -> None:
+        # Pin --ticket-dir to an empty temp dir so independence
+        # detection always falls back to serial id-list output. Without
+        # this pin, the test silently coupled to whether the live
+        # ticket files in the repo carry a ``files_touched:`` Plan
+        # section — adding one to ARG1-013 would flip the output to
+        # the AC#6 markdown table.
         with tempfile.TemporaryDirectory() as td:
             state = Path(td) / "STATE.md"
             _write_state(state, _FULL_STATE)
+            empty_tickets = Path(td) / "no-tickets"
+            empty_tickets.mkdir()
             res = _run_cli(
                 "orchestrate",
                 "--dry-run",
@@ -197,6 +205,8 @@ class OrchestrateCLITests(unittest.TestCase):
                 "2",
                 "--state-file",
                 str(state),
+                "--ticket-dir",
+                str(empty_tickets),
             )
             self.assertEqual(res.returncode, 0, msg=res.stderr)
             lines = res.stdout.splitlines()
@@ -207,6 +217,8 @@ class OrchestrateCLITests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             state = Path(td) / "STATE.md"
             _write_state(state, _FULL_STATE)
+            empty_tickets = Path(td) / "no-tickets"
+            empty_tickets.mkdir()
             res = _run_cli(
                 "orchestrate",
                 "--dry-run",
@@ -214,6 +226,8 @@ class OrchestrateCLITests(unittest.TestCase):
                 "99",
                 "--state-file",
                 str(state),
+                "--ticket-dir",
+                str(empty_tickets),
             )
             self.assertEqual(res.returncode, 0, msg=res.stderr)
             self.assertEqual(
