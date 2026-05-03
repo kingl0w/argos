@@ -144,6 +144,18 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-05-03T18:05:43Z-ARG1-023 ticket=ARG1-023 author=verifier session=arg1-023-worktree -->
+- **[2026-05-03T18:10:00Z] ARG1-023 — verified** (worktree `argos-v1-arg1-023`, branch `ticket/ARG1-023`)
+  - Files changed: `argos/cli/orchestrator/merge.py` (new), `argos/cli/commands/worktree_finalize.py` (new), `argos/cli/__main__.py` (registered `worktree-finalize` subcommand), `argos/cli/tests/test_worktree_finalize.py` (new), `argos/specs/v1.0/tickets/ARG1-023-worktree-merge-preserve.md` (Plan + Verification appended).
+  - ACs: 6/6 met. AC#1 ff merge: `git log --oneline main..argos/ARG1-099` empty after `worktree-finalize --result pass`. AC#2 three-way: first-parent log on main starts with `Merge branch 'argos/ARG1-099'`. AC#3 conflict: exit 1, `git merge --abort` cleared MERGE_HEAD, `argos/specs/escalations/ARG1-099-*.md` exists with `severity: blocking` and body containing `merge conflict`. AC#4 fail: exit 0, worktree dir + branch both preserved. AC#5 pass-with-minors: identical merge behavior to pass. AC#6 `--json` emits all four required keys (`merged`, `merge_strategy`, `conflicts`, `worktree_preserved`).
+  - Empirical confirmation: ARG1-032 pre-commit hook accepts the three-way auto-merge commit when STATE.md changes on both sides are verifier-author argos:entry blocks (the ARG1-052 merge driver produces a clean union; no bypass needed).
+  - Architectural choices Q1–Q4: single-ticket primitive (Q1); always preserve on fail (Q2); abort + blocking escalation (Q3); no `--dry-run`, `--json` covers programmatic inspection (Q4).
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_worktree_finalize -v` → 12 tests, all OK (Ran 12 tests in 0.62s). Full suite: `python3 -m unittest discover -s argos/cli/tests` → 260 tests, all OK (Ran 260 tests in 9.70s). Zero regressions. Lint: `python3 -m argos.cli lint-imports argos/` exits 0.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
