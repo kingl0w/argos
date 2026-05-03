@@ -34,6 +34,16 @@ Tickets completed since the last cycle close. Cleared when you close a cycle (we
 - ARG1-050 (2026-04-26) — STATE.md append-mostly block schema doc + reference parser shipped; 13/13 pytest tests pass; 12 files added under `argos/specs/v1.0/schemas/` and `argos/cli/`.
 - ARG1-040 — Escalation file schema and `escalations/` directory contract verified 2026-04-26 (manual session, no worktree dispatch — v0.5 loop run on the v1.0 spec tree). New files: `argos/specs/v1.0/schemas/escalation.md`, `argos/specs/v1.0/schemas/examples/escalation-{blocking,malformed}.md`, `argos/specs/escalations/{.gitkeep,README.md}`, `argos/cli/{__init__.py,escalation_validator.py,escalation-validate,tests/__init__.py,tests/test_escalation_validator.py}`. 7 unit tests pass; all 6 acceptance criteria covered. 0 critical / 0 major / 0 minor findings. Decision: pass. Validator language is provisional Python pending ADR-001; stdlib only, no deps added.
 
+
+<!-- argos:entry id=2026-05-03T16:56:21Z-ARG1-032-verify ticket=ARG1-032 author=verifier session=local-2026-05-03 -->
+- **[2026-05-03] ARG1-032 — verified** (session local-2026-05-03, worktree `argos-v1-arg1-032`)
+  - Files added: `argos/scripts/hooks/pre-commit-state-write.sh`, `argos/scripts/install-hooks.sh`, `argos/scripts/hooks/tests/test_pre_commit.sh`
+  - Files edited: `argos/scripts/argos-init.sh`, `argos/specs/v1.0/tickets/ARG1-032-pre-commit-verifier-only-state.md`
+  - AC harness: 8 pass, 0 fail, 0 warn (`sh argos/scripts/hooks/tests/test_pre_commit.sh`)
+  - Findings: 0 critical, 0 major, 0 minor
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Open decisions
 
 Product or architecture calls that are pending and block one or more queued tickets. Each becomes an ADR once decided.
