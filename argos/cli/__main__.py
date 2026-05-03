@@ -51,6 +51,7 @@ INTERNAL_SUBCOMMANDS = (
     "escalation-validate",
     "frontmatter-parse",
     "run-session",
+    "worktree-finalize",
     "lint-imports",
 )
 
@@ -85,6 +86,7 @@ def _print_usage(stream) -> None:
         "  escalation-validate   validate an escalation file against the schema\n"
         "  frontmatter-parse     parse YAML-subset frontmatter (ADR-002) to JSON\n"
         "  run-session           spawn a per-ticket session in a worktree (orchestrator)\n"
+        "  worktree-finalize     merge a passed worktree's branch back to base (or preserve on fail)\n"
         "  lint-imports          verify .py imports against the ADR-001 stdlib allowlist\n"
         "\n"
         "Run 'argos --version' to print the version.\n"
@@ -171,6 +173,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "run-session":
         from argos.cli.commands.run_session import main as run_session_main
         return run_session_main(rest)
+
+    if head == "worktree-finalize":
+        from argos.cli.commands.worktree_finalize import main as worktree_finalize_main
+        return worktree_finalize_main(rest)
 
     if head == "lint-imports":
         from argos.cli.lint_imports import main as lint_imports_main
