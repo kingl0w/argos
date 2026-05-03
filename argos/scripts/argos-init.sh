@@ -89,6 +89,12 @@ fi
   echo "date:    $DATE"
 } > "$SENTINEL"
 
+# Register pre-commit hooks (ARG1-032). Best-effort: a non-git checkout still
+# yields a usable spec tree.
+if [ -x argos/scripts/install-hooks.sh ] && git rev-parse --git-dir >/dev/null 2>&1; then
+  sh argos/scripts/install-hooks.sh || echo "argos: install-hooks.sh failed (non-fatal); see message above" >&2
+fi
+
 cat <<EOF
 
 Argos initialized.
