@@ -1,0 +1,24 @@
+# argos/config.toml — project-level Argos config (committed)
+#
+# Schema: argos/specs/v1.0/schemas/config.md (File 1).
+# Hand-created for the Layer 3 dogfood bootstrap (argos init / ARG1-002 not yet
+# shipped, so this stands in for the init-generated file). The only non-default
+# value is escalation.require_attend_before_merge = false — see note below.
+
+[project]
+name = "argos"
+prefix = "ARG1"
+
+[orchestrator]
+max_parallel = 3
+independence_strategy = "plan-declared"
+dry_plan_cache = true
+
+[verifier]
+auto_fix_retries = 0
+
+[escalation]
+# Set false for the Layer 3 bootstrap: argos attend (ARG1-005) does not exist
+# yet, so the operator drains escalations manually. Restore to true once
+# ARG1-005 ships and the attend-driven drain path is available.
+require_attend_before_merge = false
