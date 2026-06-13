@@ -84,26 +84,28 @@ When a sub-agent inside a session writes an escalation file (raised_by ∈ {plan
 
 ## Parallel dispatch behavior (contract only)
 
-This section is the contract; ARG1-021 / ARG1-022 implement the detection.
+This section is the contract; ARG1-066 / ARG1-022 implement the detection
+(ARG1-066 superseding ARG1-021's strict file-set criterion per
+ESC-ARG1-021-independence-criterion).
 
 **Independence definition.** Two tickets A and B are independent for parallel dispatch iff:
 
-1. Neither lists the other in `depends_on:` frontmatter (transitively, across the candidate batch).
-2. Their declared `files_touched:` sets (from the planner's machine-parseable plan output, or from `parallelizable_with:` frontmatter as a fallback) are pairwise disjoint.
+1. Neither lists the other in `depends_on:` frontmatter (transitively, across the candidate batch). This is the cheap first-pass exclusion and is checked before any merge.
+2. The dry-run `git merge --no-commit --no-ff` of one ticket branch (`argos/{ticket-id}`) onto the other — attempted in **both directions** in a throwaway staging worktree — completes with no conflicts. The dry-run exercises the actual configured merge (custom drivers via `.gitattributes`, e.g. STATE.md's ARG1-052 driver; default `text` driver for registration files like `argos/cli/__main__.py`), so a pair that auto-resolves cleanly is correctly judged independent even when it shares a file.
 
-Both conditions must hold. If either is unknown or ambiguous for a candidate pair, treat the pair as **dependent** and serialize.
+Both conditions must hold. When a pair's branches are not yet present (plan-time, before sessions commit) or no git repo is reachable, the merge check degrades to strict `files_touched:` disjointness (the ARG1-021 behavior). If a pair is otherwise unknown or ambiguous, treat it as **dependent** and serialize.
 
 **Cap.** Never dispatch more than `orchestrator.max_parallel` (default 3) sessions concurrently, even when independence analysis says more would be safe. The cap is a blast-radius floor.
 
-**What independence does not guarantee.** File-set disjointness is the *only* parallelism guarantee the orchestrator makes. The orchestrator does **not** detect content-level conflicts between parallel sessions:
+**What independence does not guarantee.** Conflict-free merge-ability is the *only* parallelism guarantee the orchestrator makes. The orchestrator does **not** detect content-level conflicts between parallel sessions whose diffs merge cleanly:
 
 - Two independent tickets may make the same load-bearing assumption (e.g. both assume a helper has signature `f(x, y)`); if one ticket changes the signature on a file the other doesn't touch, the second ticket's verifier may pass against stale assumptions and the merged tree may be inconsistent.
 - Two independent tickets may both depend on a shared invariant that one of them silently invalidates.
 - Two independent tickets may touch disjoint files that nonetheless share imports, types, or behavioral contracts.
 
-These are caught downstream — at the **verifier** of the second-merging ticket (it runs against the post-merge tree and sees the regression) or at **merge time** (semantic conflict on file-disjoint diffs surfaces as test failure on the integrated branch). They are *not* caught at dispatch. The orchestrator's job is to pick file-disjoint work; reasoning about content-level interaction is out of scope by design.
+These are caught downstream — at the **verifier** of the second-merging ticket (it runs against the post-merge tree and sees the regression) or at **merge time** (semantic conflict on cleanly-merging diffs surfaces as test failure on the integrated branch). They are *not* caught at dispatch. The orchestrator's job is to pick cleanly-merging work; reasoning about content-level interaction is out of scope by design.
 
-**Fallback.** If independence analysis fails (planner cannot produce a `files_touched:` list, or `depends_on:` declares an unrecognized id, or the dry-plan cache is corrupt) → serial dispatch. Degraded throughput, never wrong dispatch.
+**Fallback.** If independence analysis fails (a ticket cannot be loaded, `depends_on:` declares an unrecognized id, or the git dry-run plumbing errors) → serial dispatch. Degraded throughput, never wrong dispatch.
 
 ## Auto-fix retry behavior (contract only)
 

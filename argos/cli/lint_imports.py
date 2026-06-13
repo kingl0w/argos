@@ -56,6 +56,7 @@ STDLIB_ALLOWLIST: frozenset = frozenset({
     "datetime",
     # Additional stdlib top-level packages used by shipped argos modules.
     "ast",
+    "atexit",
     "fcntl",
     "hashlib",
     "http",
@@ -63,6 +64,7 @@ STDLIB_ALLOWLIST: frozenset = frozenset({
     "os",
     "random",
     "shutil",
+    "signal",
     "socket",
     "subprocess",
     "sys",

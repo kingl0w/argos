@@ -1,7 +1,16 @@
-"""Tests for ARG1-021: file-overlap independence detection.
+"""Tests for ARG1-066: merge-aware independence detection.
+
+Supersedes ARG1-021's strict file-overlap tests. The strict-criterion library
+and CLI tests are retained as the *static fallback* path (exercised when a
+pair's ``argos/<id>`` branches do not exist), keeping their original intent
+(AC#11). New ``MergeDryRunTests`` / ``CLIMergeTests`` cover the merge-dryrun
+mechanism: merge-driver compatibility (AC#4), hook non-interaction (AC#5),
+registration-pattern coverage (AC#6), depends_on precedence (AC#7), and
+rollback discipline (AC#8).
 
 Stdlib-only per ADR-001 / ADR-002 — :mod:`unittest`, :mod:`subprocess`,
-:mod:`tempfile`, :mod:`json`, :mod:`pathlib`. No third-party imports.
+:mod:`tempfile`, :mod:`json`, :mod:`pathlib`, :mod:`shutil`, :mod:`os`. No
+third-party imports.
 
 Runnable as::
 
@@ -11,6 +20,8 @@ Runnable as::
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -24,9 +35,11 @@ if str(_REPO_ROOT) not in sys.path:
 
 from argos.cli.orchestrator.independence import (  # noqa: E402
     DEFAULT_TICKET_DIR,
+    MergeStagingArea,
     MissingFilesTouchedError,
     Ticket,
     TicketNotFoundError,
+    compute_branch_name,
     is_independent,
     load_ticket,
     partition,
@@ -441,6 +454,358 @@ class PlannerMirrorTests(unittest.TestCase):
             _REPO_ROOT / "argos" / "specs" / "v1.0" / "agents" / "planner.md"
         ).read_text(encoding="utf-8")
         self.assertIn("files_touched:", b)
+
+
+# ---------------------------------------------------------------------------
+# Merge-dryrun mechanism (ARG1-066) — real git repos with real branches
+# ---------------------------------------------------------------------------
+
+
+_REAL_DRIVER = (
+    _REPO_ROOT / "argos" / "scripts" / "state-merge-driver.sh"
+)
+
+
+def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
+    res = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if check and res.returncode != 0:
+        raise AssertionError(
+            f"git {' '.join(args)} failed: {res.stderr or res.stdout}"
+        )
+    return res
+
+
+def _init_repo(repo: Path) -> None:
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(repo)],
+        check=True,
+        capture_output=True,
+    )
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+
+
+def _write(repo: Path, rel: str, content: str) -> None:
+    p = repo / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(content, encoding="utf-8")
+
+
+def _commit_all(repo: Path, msg: str) -> None:
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", msg)
+
+
+def _branch_with(repo: Path, ticket_id: str, files: dict, msg: str, base: str = "main") -> None:
+    """Create branch ``argos/<ticket_id>`` off ``base`` with ``files`` written."""
+    _git(repo, "checkout", "-q", base)
+    _git(repo, "checkout", "-q", "-b", compute_branch_name(ticket_id))
+    for rel, content in files.items():
+        _write(repo, rel, content)
+    _commit_all(repo, msg)
+    _git(repo, "checkout", "-q", base)
+
+
+def _T(ticket_id: str, files=(), depends_on=()) -> Ticket:
+    return Ticket(
+        ticket_id=ticket_id,
+        path=Path(f"/tmp/{ticket_id}.md"),
+        depends_on=tuple(depends_on),
+        files_touched=tuple(files),
+    )
+
+
+class MergeDryRunTests(unittest.TestCase):
+    """The merge-aware criterion against real branches in a real repo."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        _init_repo(self.repo)
+        # A __main__.py-style registration file at distinct line ranges.
+        _write(self.repo, "argos/cli/reg.py", "one\ntwo\nthree\n")
+        _commit_all(self.repo, "seed")
+
+    # AC#6 — registration-pattern coverage (the case strict got wrong).
+    def test_registration_pattern_independent(self) -> None:
+        _branch_with(self.repo, "ARG1-201", {"argos/cli/reg.py": "one\ntwo\nthree\nFOUR\n"}, "add four")
+        _branch_with(self.repo, "ARG1-202", {"argos/cli/reg.py": "ZERO\none\ntwo\nthree\n"}, "add zero")
+        r = is_independent(_T("ARG1-201"), _T("ARG1-202"), repo_root=self.repo)
+        self.assertTrue(r.independent, msg=r.reason)
+        self.assertEqual(r.reason, "")
+
+    def test_same_line_edit_conflicts_dependent(self) -> None:
+        _branch_with(self.repo, "ARG1-203", {"argos/cli/reg.py": "one\nTWO-A\nthree\n"}, "edit two A")
+        _branch_with(self.repo, "ARG1-204", {"argos/cli/reg.py": "one\nTWO-B\nthree\n"}, "edit two B")
+        r = is_independent(_T("ARG1-203"), _T("ARG1-204"), repo_root=self.repo)
+        self.assertFalse(r.independent)
+        self.assertIn("merge conflict", r.reason)
+        self.assertIn("argos/cli/reg.py", r.reason)
+        self.assertEqual(r.shared_files, ("argos/cli/reg.py",))
+
+    def test_disjoint_files_independent(self) -> None:
+        _branch_with(self.repo, "ARG1-205", {"argos/cli/p205.py": "a\n"}, "p205")
+        _branch_with(self.repo, "ARG1-206", {"argos/cli/p206.py": "b\n"}, "p206")
+        r = is_independent(_T("ARG1-205"), _T("ARG1-206"), repo_root=self.repo)
+        self.assertTrue(r.independent, msg=r.reason)
+
+    # AC#7 — depends_on is the cheap first pass: declared dependency wins even
+    # when the branches themselves would merge cleanly (no dry-run consulted).
+    def test_depends_on_precedes_merge(self) -> None:
+        _branch_with(self.repo, "ARG1-207", {"argos/cli/p207.py": "a\n"}, "p207")
+        _branch_with(self.repo, "ARG1-208", {"argos/cli/p208.py": "b\n"}, "p208")
+        # Disjoint files → would be merge-clean, but B depends_on A.
+        r = is_independent(
+            _T("ARG1-207"),
+            _T("ARG1-208", depends_on=["ARG1-207"]),
+            repo_root=self.repo,
+        )
+        self.assertFalse(r.independent)
+        self.assertEqual(r.reason, "depends_on")
+
+    # Lifecycle: a missing branch degrades to the strict file-set criterion.
+    def test_missing_branch_falls_back_to_static_independent(self) -> None:
+        _branch_with(self.repo, "ARG1-209", {"argos/cli/p209.py": "a\n"}, "p209")
+        # ARG1-210 has no branch → static fallback over files_touched (disjoint).
+        r = is_independent(
+            _T("ARG1-209", files=["x.py"]),
+            _T("ARG1-210", files=["y.py"]),
+            repo_root=self.repo,
+        )
+        self.assertTrue(r.independent, msg=r.reason)
+
+    def test_missing_branch_falls_back_to_static_shared(self) -> None:
+        _branch_with(self.repo, "ARG1-211", {"argos/cli/p211.py": "a\n"}, "p211")
+        r = is_independent(
+            _T("ARG1-211", files=["shared.py"]),
+            _T("ARG1-212", files=["shared.py"]),
+            repo_root=self.repo,
+        )
+        self.assertFalse(r.independent)
+        self.assertIn("shared file", r.reason)
+
+    # AC#8 — rollback discipline: no leaked worktrees, byte-equivalent status.
+    def test_no_leaked_worktree_and_clean_status(self) -> None:
+        _branch_with(self.repo, "ARG1-213", {"argos/cli/reg.py": "one\ntwo\nthree\nFOUR\n"}, "f")
+        _branch_with(self.repo, "ARG1-214", {"argos/cli/reg.py": "ZERO\none\ntwo\nthree\n"}, "z")
+        status_before = _git(self.repo, "status", "--porcelain").stdout
+        wt_before = _git(self.repo, "worktree", "list", "--porcelain").stdout
+        with MergeStagingArea(self.repo) as st:
+            is_independent(_T("ARG1-213"), _T("ARG1-214"), staging=st)
+        status_after = _git(self.repo, "status", "--porcelain").stdout
+        wt_after = _git(self.repo, "worktree", "list", "--porcelain").stdout
+        self.assertEqual(status_before, status_after)
+        self.assertEqual(wt_before, wt_after)
+        # Exactly one worktree (the main one) remains.
+        self.assertEqual(wt_after.count("worktree "), 1)
+
+    def test_partition_reuses_one_staging_no_leak(self) -> None:
+        _branch_with(self.repo, "ARG1-215", {"argos/cli/reg.py": "one\ntwo\nthree\nFOUR\n"}, "f")
+        _branch_with(self.repo, "ARG1-216", {"argos/cli/reg.py": "ZERO\none\ntwo\nthree\n"}, "z")
+        _branch_with(self.repo, "ARG1-217", {"argos/cli/reg.py": "one\nTWO-X\nthree\n"}, "x")
+        with MergeStagingArea(self.repo) as st:
+            groups = partition(
+                [_T("ARG1-215"), _T("ARG1-216"), _T("ARG1-217")], staging=st
+            )
+        # 215 & 216 merge clean (distinct ranges); 217 edits the 'two' line so
+        # it conflicts with neither 215's nor 216's change? 217 vs 215: 215 adds
+        # FOUR at end, 217 edits 'two' → distinct → clean. 217 vs 216: 216 adds
+        # ZERO at top, 217 edits 'two' → distinct → clean. So all three merge
+        # pairwise clean → one group.
+        self.assertEqual(groups, [["ARG1-215", "ARG1-216", "ARG1-217"]])
+        wt = _git(self.repo, "worktree", "list", "--porcelain").stdout
+        self.assertEqual(wt.count("worktree "), 1)
+
+
+class MergeDriverTests(unittest.TestCase):
+    """AC#4 — the dry-run exercises the configured ARG1-052 STATE.md driver."""
+
+    _BASE_STATE = (
+        "# STATE\n\n"
+        "<!-- argos:entry id=base-1 author=verifier -->\n"
+        "base entry\n"
+        "<!-- /argos:entry -->\n"
+    )
+
+    def _state_with(self, entry_id: str, body: str) -> str:
+        return (
+            self._BASE_STATE
+            + f"\n<!-- argos:entry id={entry_id} author=verifier -->\n"
+            + f"{body}\n"
+            + "<!-- /argos:entry -->\n"
+        )
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        _init_repo(self.repo)
+        # Install the *real* ARG1-052 driver into the fixture repo.
+        driver_rel = "argos/scripts/state-merge-driver.sh"
+        (self.repo / "argos" / "scripts").mkdir(parents=True, exist_ok=True)
+        shutil.copy(_REAL_DRIVER, self.repo / driver_rel)
+        os.chmod(self.repo / driver_rel, 0o755)
+        _write(
+            self.repo,
+            ".gitattributes",
+            "argos/specs/v1.0/STATE.md merge=argos-state\n",
+        )
+        _write(self.repo, "argos/specs/v1.0/STATE.md", self._BASE_STATE)
+        _commit_all(self.repo, "seed state + driver")
+        # Two branches each append a distinct entry block at EOF — under git's
+        # default text merge these adjacent EOF appends CONFLICT; the append
+        # driver resolves them cleanly.
+        _branch_with(
+            self.repo,
+            "ARG1-301",
+            {"argos/specs/v1.0/STATE.md": self._state_with("a-1", "a entry")},
+            "append a",
+        )
+        _branch_with(
+            self.repo,
+            "ARG1-302",
+            {"argos/specs/v1.0/STATE.md": self._state_with("b-1", "b entry")},
+            "append b",
+        )
+
+    def _set_driver(self, enabled: bool) -> None:
+        if enabled:
+            _git(
+                self.repo,
+                "config",
+                "merge.argos-state.driver",
+                "argos/scripts/state-merge-driver.sh %O %A %B %P %L",
+            )
+        else:
+            _git(self.repo, "config", "--unset-all", "merge.argos-state.driver", check=False)
+
+    def test_state_pair_independent_under_driver(self) -> None:
+        self._set_driver(True)
+        r = is_independent(_T("ARG1-301"), _T("ARG1-302"), repo_root=self.repo)
+        self.assertTrue(r.independent, msg=r.reason)
+
+    def test_proves_driver_is_what_resolves(self) -> None:
+        # Without the configured driver the same pair conflicts (default text
+        # merge) → dependent. With it → independent. This proves the dry-run
+        # exercised the driver, not a default strategy.
+        self._set_driver(False)
+        r_default = is_independent(_T("ARG1-301"), _T("ARG1-302"), repo_root=self.repo)
+        self.assertFalse(
+            r_default.independent,
+            msg="expected default text merge to conflict on EOF appends",
+        )
+        self._set_driver(True)
+        r_driver = is_independent(_T("ARG1-301"), _T("ARG1-302"), repo_root=self.repo)
+        self.assertTrue(r_driver.independent, msg=r_driver.reason)
+
+
+class HookInteractionTests(unittest.TestCase):
+    """AC#5 — the detector's internal merges never fire the ARG1-032 hook."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        _init_repo(self.repo)
+        _write(self.repo, "argos/cli/reg.py", "one\ntwo\nthree\n")
+        _commit_all(self.repo, "seed")
+        _branch_with(self.repo, "ARG1-401", {"argos/cli/reg.py": "one\ntwo\nthree\nFOUR\n"}, "f")
+        _branch_with(self.repo, "ARG1-402", {"argos/cli/reg.py": "ZERO\none\ntwo\nthree\n"}, "z")
+        # Install a pre-commit hook (ARG1-032 shape) that drops a sentinel if it
+        # ever fires. Installed AFTER the branch commits so those don't trip it.
+        self.sentinel = self.repo / "HOOK_FIRED"
+        hook = self.repo / ".git" / "hooks" / "pre-commit"
+        hook.write_text(
+            "#!/bin/sh\n"
+            f'echo fired > "{self.sentinel}"\n'
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        os.chmod(hook, 0o755)
+
+    def test_dryrun_does_not_fire_pre_commit_hook(self) -> None:
+        with MergeStagingArea(self.repo) as st:
+            r = is_independent(_T("ARG1-401"), _T("ARG1-402"), staging=st)
+        self.assertTrue(r.independent, msg=r.reason)
+        self.assertFalse(
+            self.sentinel.exists(),
+            msg="pre-commit hook fired during a --no-commit dry-run merge",
+        )
+
+
+class CLIMergeTests(unittest.TestCase):
+    """AC#1 surface + merge behavior end-to-end through ``argos independence``."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        _init_repo(self.repo)
+        # Ticket dir lives OUTSIDE the repo so branch checkouts never disturb
+        # it (a ticket file committed on a branch would vanish on `checkout
+        # main`). The detector reads tickets from --ticket-dir regardless.
+        self._tdir_tmp = tempfile.TemporaryDirectory()
+        self.tdir = Path(self._tdir_tmp.name)
+        self.addCleanup(self._tdir_tmp.cleanup)
+        _write(self.repo, "argos/cli/reg.py", "one\ntwo\nthree\n")
+        _commit_all(self.repo, "seed")
+        # Ticket files (depends_on parsed from frontmatter; files_touched from
+        # Plan — present so a missing-branch pair would still load cleanly).
+        for tid in ("ARG1-501", "ARG1-502", "ARG1-503"):
+            _write_ticket(self.tdir, tid, files_touched=["argos/cli/reg.py"])
+        # 501 appends a line at EOF; 502 prepends at BOF (distinct → clean).
+        # 503 appends a DIFFERENT line at the same EOF position as 501, so it
+        # conflicts with 501 but not with 502.
+        _branch_with(self.repo, "ARG1-501", {"argos/cli/reg.py": "one\ntwo\nthree\nFOUR\n"}, "f")
+        _branch_with(self.repo, "ARG1-502", {"argos/cli/reg.py": "ZERO\none\ntwo\nthree\n"}, "z")
+        _branch_with(self.repo, "ARG1-503", {"argos/cli/reg.py": "one\ntwo\nthree\nFOUR-DIFFERENT\n"}, "c")
+
+    def _cli(self, *args: str) -> subprocess.CompletedProcess:
+        # cwd inside the repo so find_repo_root resolves the fixture, not the
+        # argos repo. PYTHONPATH carries the argos package.
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(_REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+        return subprocess.run(
+            [sys.executable, "-m", "argos.cli", "independence",
+             "--ticket-dir", str(self.tdir), *args],
+            cwd=str(self.repo),
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+
+    def test_registration_pair_reported_independent(self) -> None:
+        r = self._cli("ARG1-501", "ARG1-502")
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertIn("independent: ARG1-501 ARG1-502", r.stdout)
+
+    def test_conflict_pair_reported_dependent(self) -> None:
+        r = self._cli("ARG1-501", "ARG1-503")
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        self.assertIn("dependent: ARG1-501 ARG1-503", r.stdout)
+        self.assertIn("merge conflict", r.stdout)
+
+    def test_json_surface_unchanged(self) -> None:
+        r = self._cli("--json", "ARG1-501", "ARG1-502", "ARG1-503")
+        self.assertEqual(r.returncode, 0, msg=r.stderr)
+        payload = json.loads(r.stdout)
+        self.assertIn("groups", payload)
+        self.assertIn("pairs", payload)
+        # 501 & 503 conflict → not in the same group.
+        g_with_501 = [g for g in payload["groups"] if "ARG1-501" in g][0]
+        self.assertNotIn("ARG1-503", g_with_501)
+
+    def test_no_leaked_worktree_after_cli_run(self) -> None:
+        self._cli("ARG1-501", "ARG1-502", "ARG1-503")
+        wt = _git(self.repo, "worktree", "list", "--porcelain").stdout
+        self.assertEqual(wt.count("worktree "), 1)
 
 
 if __name__ == "__main__":  # pragma: no cover

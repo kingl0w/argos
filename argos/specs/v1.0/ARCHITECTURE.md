@@ -101,13 +101,14 @@ denied_paths:
 - On verifier fail: worktree is preserved (not deleted) for operator inspection. Branch is left in place. STATE.md gets a fail entry (written by the verifier in that session, see §STATE.md Concurrency).
 - Cleanup: `argos sync` prunes worktrees whose branches have been merged and deleted.
 
-**Independence detection (file-scope analysis).**
-- Before dispatching a parallel batch, the orchestrator runs a *dry plan* of each candidate ticket: it spawns the planner agent in read-only mode and asks it to list the files it expects to touch (the planner already produces a Plan section listing files; v1.0 makes that list machine-parseable).
-- Two tickets are **independent** iff their file sets are disjoint AND neither lists the other in `depends_on:` frontmatter.
-- Two tickets are **dependent** if file sets overlap on any path, or if `depends_on:` declares a relationship. Dependent tickets are serialized in dispatch order.
+**Independence detection (merge-dryrun analysis).**
+- The criterion is a **dynamic dry-run merge** (ARG1-066, ratified in ESC-ARG1-021-independence-criterion; supersedes ARG1-021's strict file-set disjointness). Two tickets are checked by actually exercising the configured merge, not by predicting conflict from static metadata.
+- Two tickets are **independent** iff: (1) neither lists the other in `depends_on:` frontmatter — the cheap first-pass exclusion; AND (2) `git merge --no-commit --no-ff` of one ticket branch (`argos/{ticket-id}`) onto the other, attempted in **both directions** in a throwaway staging worktree, completes with no conflicts. `depends_on:` is checked first and short-circuits before any merge.
+- Two tickets are **dependent** if `depends_on:` declares a relationship, or if either merge direction conflicts. Dependent tickets are serialized in dispatch order.
+- The dry-run exercises the *actual* merge configuration: the staging worktree inherits `.gitattributes` and shares the repo's `merge.*.driver` config, so STATE.md merges run the ARG1-052 custom driver and registration-style files (e.g. `argos/cli/__main__.py`) are judged by whether `ort` actually resolves them — no allowlist, no line-range heuristic. `--no-commit` means commit-time hooks (ARG1-032) never fire. Staging worktrees are created lazily, reused across a batch, and cleaned up on every exit path including crash (atexit + signal).
+- **Degraded-but-correct fallback.** When a pair's branches do not exist yet (the plan-time case, before sessions have produced commits) or no git repo is reachable, the criterion degrades to strict `files_touched:` disjointness — the ARG1-021 behavior, conservative-correct per §Invariants.
 - Heuristic floor: the orchestrator never dispatches more than `max_parallel` sessions concurrently (default 3, configurable in `argos/config.toml`). This caps blast radius even when independence analysis says more would be safe.
-- TODO: directory-prefix overlap rules. Two tickets touching `src/foo/a.ts` and `src/foo/b.ts` may still conflict via shared imports — file an ADR if false-positive parallelism causes incidents.
-- TODO: dry-plan caching. Re-running the planner just to extract a file list is expensive; consider a `files_touched:` field the planner writes during normal planning.
+- Out of scope (caught downstream at the second-merging ticket's verifier or at merge time, not at dispatch): content-level conflicts on file-disjoint diffs — shared imports, type/behavioral contracts, invalidated invariants.
 
 **Inputs.** Selected ticket batch from the orchestrator's queue read.
 
