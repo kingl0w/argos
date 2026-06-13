@@ -1,7 +1,7 @@
 ---
 id: ARG1-066
 title: Merge-aware independence detection (replace strict criterion)
-status: queued
+status: ready
 layer: 2
 depends_on: [ARG1-021, ARG1-022, ARG1-023, ARG1-013, ARG1-054]
 blocks: []
