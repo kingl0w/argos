@@ -121,3 +121,19 @@ The constraints that bear on this decision:
 - Iteration loop is fast (no compile step).
 - Contributors with Python literacy (the dominant case for the target audience) can read and modify the orchestrator without learning a new language.
 - The orchestrator can spawn `python3 -m argos.cli ...` subprocesses without a custom binary on PATH for development workflows.
+
+## Amendment trail
+
+Per §Decision item 1, additions to the stdlib import allowlist
+(`argos/cli/lint_imports.py` `STDLIB_ALLOWLIST`) are documented here with the
+specific stdlib feature that demands them. These are stdlib-only additions; the
+runtime-stdlib mandate and the zero-third-party-dependency rule are unchanged.
+
+- **2026-06-13 — `atexit`, `signal` (ARG1-066).** ARG1-066's merge-aware
+  independence detector runs dry-run `git merge` in a throwaway git worktree.
+  ARG1-066 AC#2 mandates that the worktree be cleaned up "even on crash (atexit
+  + signal handlers)". `atexit.register` covers normal interpreter exit and
+  unhandled exceptions; `signal.signal` (SIGINT/SIGTERM) covers operator
+  interrupts that bypass `atexit`. Both are stdlib; no third-party dependency is
+  introduced. The context-manager path remains the primary cleanup; these are
+  the crash backstops the AC requires.

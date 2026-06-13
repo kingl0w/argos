@@ -1,22 +1,27 @@
-"""``argos independence`` — file-overlap independence detector (ARG1-021).
+"""``argos independence`` — merge-aware independence detector (ARG1-066).
 
 Usage::
 
     argos independence ARG1-099 ARG1-100 [ARG1-101 ...] [--json] [--ticket-dir DIR]
 
-Loads each named ticket, parses its frontmatter ``depends_on:`` and its
-``## Plan`` section's ``files_touched:`` field, and reports whether the
-batch is independent for parallel dispatch per the criterion pinned in
-``argos/cli/orchestrator/independence.py`` (which itself implements
-ARCHITECTURE.md §Independence detection verbatim).
+Loads each named ticket and reports whether the batch is independent for
+parallel dispatch per the criterion in
+``argos/cli/orchestrator/independence.py`` (ARG1-066): ``depends_on:`` is the
+cheap first-pass exclusion, then a dry-run ``git merge`` of the two
+``argos/<id>`` branches in both directions decides the rest. When a pair's
+branches are not present (or the command is run outside a git repo) the pair
+degrades to ARG1-021's strict ``files_touched:`` disjointness. The CLI surface
+(positional ticket ids, ``--json``, exit codes) is unchanged from ARG1-021.
 
-Output contracts (consumed by ARG1-021 ACs and ARG1-022 dispatch):
+Output contracts (consumed by the ACs and ARG1-022 dispatch):
 
 - Default text mode, exit ``0`` on parse success:
 
   - For every pair, one line of the shape ``independent: A B`` or
-    ``dependent: A B (<reason>)``. Reason is either ``depends_on`` or
-    ``shared file: <path>[, <path>...]`` so AC text can grep for both.
+    ``dependent: A B (<reason>)``. Reason is one of ``depends_on``,
+    ``merge conflict: <path>[, <path>...]`` (merge path), or
+    ``shared file: <path>[, <path>...]`` (static fallback) — AC text can grep
+    for each.
   - Plus one ``group N: T1 T2 ...`` line per group from the partition.
 
 - ``--json`` mode, exit ``0`` on parse success: a JSON object on stdout
@@ -40,9 +45,11 @@ import sys
 from argos.cli.orchestrator.independence import (
     DEFAULT_TICKET_DIR,
     IndependenceError,
+    MergeStagingArea,
     MissingFilesTouchedError,
     PairResult,
     Ticket,
+    find_repo_root,
     is_independent,
     load_ticket,
     partition,
@@ -94,11 +101,13 @@ def _load_all(
     return loaded, 0
 
 
-def _pair_results(tickets: list[Ticket]) -> list[PairResult]:
+def _pair_results(
+    tickets: list[Ticket], staging: MergeStagingArea | None = None
+) -> list[PairResult]:
     out: list[PairResult] = []
     for i in range(len(tickets)):
         for j in range(i + 1, len(tickets)):
-            out.append(is_independent(tickets[i], tickets[j]))
+            out.append(is_independent(tickets[i], tickets[j], staging=staging))
     return out
 
 
@@ -145,8 +154,20 @@ def main(argv: list[str]) -> int:
     if rc != 0:
         return rc
 
-    pairs = _pair_results(tickets)
-    groups = partition(tickets)
+    # Merge-aware path: when invoked inside a git repo, build one shared
+    # staging worktree and reuse it across every pairwise check and the
+    # partition (so a batch creates the worktree at most once — AC#3). The
+    # staging area is lazy: if no pair has both `argos/<id>` branches present,
+    # no worktree is ever created and every pair degrades to the strict
+    # file-set criterion. Outside a repo, staging stays None → pure static.
+    repo_root = find_repo_root()
+    staging = MergeStagingArea(repo_root) if repo_root is not None else None
+    try:
+        pairs = _pair_results(tickets, staging)
+        groups = partition(tickets, staging=staging)
+    finally:
+        if staging is not None:
+            staging.close()
 
     if args.emit_json:
         _emit_json(pairs, groups, sys.stdout)

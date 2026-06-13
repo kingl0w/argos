@@ -176,6 +176,18 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-06-13T20:36:39Z-ARG1-066-done ticket=ARG1-066 author=verifier session=arg1-066-worktree -->
+- **[2026-06-13T10:00:00Z] ARG1-066 — verified** (worktree `argos-v1-arg1-066`, branch `ticket/ARG1-066`)
+  - Replaces ARG1-021's strict file-set disjointness with merge-aware independence via dynamic dry-run `git merge --no-commit --no-ff` (both directions, throwaway staging worktree), per ratified decision ESC-ARG1-021. Strict criterion demoted to the degraded-but-correct fallback used when a pair's branches don't yet exist.
+  - Files changed: `argos/cli/orchestrator/independence.py` (merge machinery + staging area + rewired criterion), `argos/cli/commands/independence.py` (CLI wires a shared staging area; surface unchanged), `argos/cli/tests/test_independence.py` (28→43 tests), `argos/cli/lint_imports.py` (+`atexit`,`signal` stdlib allowlist), `argos/specs/decisions/ADR-001-cli-language.md` (amendment trail for the two additions), `argos/specs/v1.0/ARCHITECTURE.md` §Independence detection (replaced), `argos/specs/v1.0/agents/orchestrator.md` + `.claude/agents/orchestrator.md` mirror §Parallel dispatch (replaced), `argos/specs/v1.0/tickets/ARG1-021-independence-detection.md` (`## Superseded by ARG1-066`), `argos/specs/v1.0/tickets/ARG1-066-merge-aware-independence.md` (Plan).
+  - ACs: 12/12 met. AC#1 CLI surface (positional ids, `--json`, exit codes) unchanged — existing CLI tests pass verbatim. AC#2 per-pair staging worktree + bidirectional `--no-commit --no-ff` merge with guaranteed cleanup (context-manager + atexit + SIGINT/SIGTERM). AC#3 single reused warm worktree per run; depends_on short-circuits skip merges. AC#4 STATE.md dry-run exercises the real ARG1-052 driver (proved: same pair is dependent under default text merge, independent under the configured driver). AC#5 pre-commit hook never fires on `--no-commit` (sentinel-hook fixture). AC#6 registration-pattern pair (distinct line ranges) reported independent. AC#7 depends_on reported dependent with no merge run. AC#8 byte-equivalent parent `git status` + zero leaked worktrees after a run. AC#9 ARCHITECTURE.md + orchestrator.md replaced (not appended). AC#10 ARG1-021 supersession section. AC#11 43 ≥ 35 tests. AC#12 full sweep green.
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Tests: `python3 -m unittest argos.cli.tests.test_independence` → 43 tests, OK. Full sweep `python3 -m unittest discover -s argos/cli/tests` → 319 tests, OK (was 304). `python3 -m argos.cli lint-imports argos/` exits 0.
+  - Architectural choices (Q1–Q5): staging = one lazily-created `tempfile.mkdtemp` linked worktree outside the repo tree, reused across pairs, triple-guaranteed cleanup; hook avoidance via `--no-commit` (no commit → no commit-time hooks, empirically confirmed); merge-driver inherited because linked worktrees share `.git/config` and carry checked-out `.gitattributes`; depends_on checked first by set membership before any branch resolution; perf via worktree reuse. Enabling change: `atexit`/`signal` added to the ADR-001 stdlib allowlist (AC#2 mandates them) with a documented amendment-trail entry — stdlib-only, no third-party dependency.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->

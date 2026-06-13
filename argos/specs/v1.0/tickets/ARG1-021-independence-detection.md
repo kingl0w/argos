@@ -242,3 +242,25 @@ out_of_scope_confirmed:
 
 <!-- /argos:verifier-output -->
 
+## Superseded by ARG1-066
+
+The strict file-set disjointness criterion shipped by this ticket is **superseded
+by ARG1-066** (merge-aware independence detection), per the ratified operator
+decision `argos/specs/v1.0/decisions/ESC-ARG1-021-independence-criterion.md`.
+
+ARG1-066 replaces the static file-overlap check with a dynamic dry-run
+`git merge --no-commit --no-ff` (both directions, in a throwaway staging
+worktree) that exercises the actual configured merge — subsuming both the
+custom-driver case (STATE.md via the ARG1-052 driver) and the registration
+pattern (`argos/cli/__main__.py`) that this strict criterion falsely serialized.
+The strict criterion is **not deleted**: ARG1-066 demotes it to the
+degraded-but-correct fallback used when a pair's branches do not yet exist.
+
+The implementation lives in the same module (`argos/cli/orchestrator/independence.py`),
+shipped on branch `ticket/ARG1-066`; see that ticket
+(`argos/specs/v1.0/tickets/ARG1-066-merge-aware-independence.md`) and its commit
+for the full change. ARCHITECTURE.md §Independence detection and
+`argos/specs/v1.0/agents/orchestrator.md` §Parallel dispatch were amended by
+ARG1-066 to describe the merge-dryrun mechanism (replacing the strict-criterion
+wording this ticket established).
+

@@ -139,3 +139,89 @@ AC#12 — Full sweep clean: `python3 -m unittest discover -s argos/cli/tests`
 ## State on completion
 
 Append via `python3 -m argos.cli state-append --suffix done`.
+
+## Plan
+
+files_touched:
+  - argos/cli/orchestrator/independence.py
+  - argos/cli/commands/independence.py
+  - argos/cli/tests/test_independence.py
+  - argos/specs/v1.0/ARCHITECTURE.md
+  - argos/specs/v1.0/agents/orchestrator.md
+  - argos/specs/v1.0/tickets/ARG1-021-independence-detection.md
+
+### Lifecycle resolution (the load-bearing choice)
+
+The merge-dryrun mechanism (AC#2/#4/#6) needs two *git branches with commits*
+to merge. But the existing consumer — ARG1-022's `dispatch.plan_dispatch` →
+`independence.partition` — runs at **plan time**, before any per-ticket
+`argos/{ticket_id}` branch exists (branches are created later, per session, by
+`worktree.add_worktree`). `test_parallel_dispatch.py` exercises `partition`
+with no branches at all and AC#12 requires that whole suite stays green.
+
+Resolution, consistent with every hard AC and the repeatedly-cited
+ARCHITECTURE.md §Invariants L274 ("independence analysis unavailable →
+degraded but correct"):
+
+- The criterion is **merge-aware when the pair's branches exist**, and degrades
+  to ARG1-021's **strict file-set disjointness when they do not** (or when no
+  git repo is reachable). The strict check is not deleted — it is demoted to the
+  no-branch fallback.
+- The merge path is **opt-in at the API layer** via a `staging`/`repo_root`
+  argument. `is_independent(a, b)` and `partition(tickets)` with no extra
+  argument stay pure-static — so `dispatch.partition(loaded)` (ARG1-022,
+  unchanged source) keeps its plan-time static behavior and its tests pass
+  verbatim. The `argos independence` CLI **auto-enables** the merge path: it
+  discovers the repo root, builds one shared staging area, and for each pair
+  where both `argos/{id}` branches resolve to a commit it runs the dry-run
+  merge; otherwise it falls back to strict. This is "only the implementation
+  behind the surface changes" (Non-goal #2): the CLI flags, exit codes, and the
+  Python `partition`/`load_ticket` signatures are unchanged.
+
+### Q1 — Staging area
+
+A single linked worktree per detection run, created lazily on first merge via
+`git worktree add --detach <tmp> <base-sha>` into a `tempfile.mkdtemp()` path
+**outside the repo tree** (so it can never appear in the parent worktree's
+`git status`, AC#8). It is reused across all pairs (reset between checks via
+`git checkout -f --detach <sha>` + `git merge --abort`), not recreated per pair
+(AC#3). Cleanup is guaranteed three ways: a context manager on the normal path,
+plus process-wide `atexit` and `SIGINT`/`SIGTERM` handlers that
+`git worktree remove --force` every registered staging path and `prune`. Signal
+installation is best-effort (skipped off the main thread). Verified: zero leaked
+worktrees, byte-equivalent parent `git status` after a run (AC#8).
+
+### Q2 — Hook avoidance (AC#5)
+
+The dry-run uses `git merge --no-commit --no-ff`; it never creates a commit, so
+the ARG1-032 `pre-commit-state-write.sh` hook (which fires only at commit time)
+is never reached. Empirically confirmed: a sentinel-writing pre-commit hook does
+not fire across `--no-commit` merge + `--abort`. No `--no-verify` or hook-disable
+env var is needed; we "stay pre-commit" per the AC's permitted options. The
+AC#5 fixture installs the real hook shape and asserts the sentinel is absent.
+
+### Q3 — Merge-driver exercise (AC#4)
+
+The staging worktree is checked out at a base commit that contains
+`.gitattributes` (`argos/specs/v1.0/STATE.md merge=argos-state`) and the driver
+script `argos/scripts/state-merge-driver.sh`. Linked worktrees **share the main
+repo's `.git/config`**, so `merge.argos-state.driver` is in force, and the
+relative driver path resolves against the worktree root where the script is
+checked out. Result: a STATE.md dry-run runs the ARG1-052 append-merge driver,
+not git's default text merge. Empirically confirmed (`DRIVER_RAN`, clean union
+merge of two distinct STATE.md appends). The AC#4 fixture reproduces the full
+config (attributes + driver + config) in a synthetic repo.
+
+### Q4 — depends_on precedence (AC#7)
+
+`depends_on` (and the same-ticket guard) is checked first, by set membership,
+and short-circuits to `dependent` with reason `depends_on` **before** any branch
+resolution or merge. A declared dependency never triggers a dry-run.
+
+### Q5 — Performance (AC#3)
+
+Reusing one warm staging worktree makes each pair two `checkout --detach` + two
+`merge --no-commit` + two `--abort` git invocations — well inside the <2s/pair
+and <60s/45-pair budgets. depends_on pairs cost no merge at all. No
+files_touched fast-path-to-independent is used (the planner's declared list can
+under-report; the merge is the source of truth), only depends_on short-circuits.
