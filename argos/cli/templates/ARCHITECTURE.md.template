@@ -1,0 +1,70 @@
+# {{PROJECT}} — Architecture
+
+**Created:** {{DATE}}
+**Last material change:** {{DATE}}
+
+This document describes the structure of {{PROJECT}}: the shape of its parts, the contracts between them, and the invariants that hold across all tickets. It is canonical. If the code contradicts this document, the code is drifting — file an ADR and update this file.
+
+## System shape
+
+_One paragraph or a diagram. What are the top-level pieces and how do they talk to each other?_
+
+```
+[placeholder — replace with a real ASCII diagram or a short prose description]
+
+  client ──▶ api ──▶ worker ──▶ store
+                │
+                └──▶ cache
+```
+
+## Components
+
+### {{PREFIX}} Core
+_What it is, what it owns, what it explicitly does not own._
+
+### {{PREFIX}} Worker
+_…_
+
+### {{PREFIX}} Store
+_…_
+
+Add or remove components to match the real system. Each component should have: responsibility, inputs, outputs, and a named owner (file path or module).
+
+## Contracts
+
+_The interfaces between components. API shapes, message schemas, database table definitions at the level of "what's in them," not full DDL._
+
+- **{{PREFIX}} → Worker:** _shape of the request, expected ack semantics_
+- **Worker → Store:** _write path, consistency expectations_
+- **Client → API:** _auth model, rate limit, error shape_
+
+Contracts are the hardest thing to change later. Be specific.
+
+## Invariants
+
+Things that must be true across all tickets. Violating one of these requires an ADR.
+
+- _Example: "All external calls have a 5s timeout and a retry budget of 1."_
+- _Example: "No user-facing string is hardcoded; all strings go through `i18n.t()`."_
+- _Example: "State mutations happen only inside transactions."_
+
+## Technology choices
+
+- **Language:** _…_
+- **Framework:** _…_
+- **Database:** _…_
+- **Deploy:** _…_
+- **CI:** _…_
+
+Each choice should have an ADR in `argos/specs/decisions/` if it wasn't obvious. "Why Postgres" doesn't need one if the team has always used Postgres. "Why SurrealDB" does.
+
+## What this architecture deliberately does not support
+
+- _A use case you know will come up and have decided to reject._
+- _A scaling axis you've chosen not to design for._
+
+Naming these prevents future-you from accidentally supporting them.
+
+## Known drift
+
+_Anything the code does today that this document does not describe. This section should be near-empty at any given moment — entries here are bugs in the documentation, tickets to file, or ADRs to write._

@@ -1,0 +1,34 @@
+# argos/config.toml — project-level Argos config (committed)
+#
+# Schema: argos/specs/v1.0/schemas/config.md (File 1).
+# `argos init` (ARG1-002) copies this template to argos/config.toml.
+# Until then, the loader reads this template directly.
+#
+# Edit values, not key names. Unknown keys produce a stderr warning
+# but do not break the loader.
+
+[project]
+# project.name
+name = "argos"
+# project.prefix
+prefix = "ARG1"
+
+[orchestrator]
+# orchestrator.max_parallel
+max_parallel = 3
+# orchestrator.independence_strategy
+independence_strategy = "plan-declared"
+# orchestrator.dry_plan_cache
+dry_plan_cache = true
+
+[verifier]
+# verifier.auto_fix_retries
+auto_fix_retries = 0
+# verifier.minor_lint_rules — array support deferred to ARG1-013;
+# uncommenting this line under the in-house TOML mini-parser will
+# raise ConfigParseError until that ticket lands.
+# verifier.minor_lint_rules = ["unused-imports", "import-order"]
+
+[escalation]
+# escalation.require_attend_before_merge
+require_attend_before_merge = true

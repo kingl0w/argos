@@ -11,8 +11,10 @@ is routed by subcommand name. Subcommands fall into two groups:
   ``escalation-validate`` → :mod:`argos.cli.escalation_validator`,
   ``frontmatter-parse`` → :mod:`argos.cli.commands.frontmatter_parse`,
   ``lint-imports`` → :mod:`argos.cli.lint_imports`.
-- **Public-surface stubs** for ARG1-002 / ARG1-003 / ARG1-004 / ARG1-005:
-  ``init`` / ``sync`` / ``status`` / ``attend`` print a "not yet implemented"
+- **Implemented public subcommands** ``init`` → :mod:`argos.cli.commands.init`
+  and ``config`` → :mod:`argos.cli.commands.config`.
+- **Public-surface stubs** for ARG1-003 / ARG1-004 / ARG1-005:
+  ``status`` / ``sync`` / ``attend`` print a "not yet implemented"
   message and exit non-zero. They exist so ``argos --help`` lists them.
 
 Error contracts:
@@ -60,7 +62,6 @@ INTERNAL_SUBCOMMANDS = (
 # ``--clean-queue`` in ARG1-068; the broader sync surface (ticket ↔ Issue
 # reconciliation) remains in ARG1-004.
 _STUB_TICKETS = {
-    "init": "ARG1-002",
     "sync": "ARG1-004",
     "status": "ARG1-003",
     "attend": "ARG1-005",
@@ -127,6 +128,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     rest = argv[1:]
+
+    if head == "init":
+        from argos.cli.commands.init import main as init_main
+        return init_main(rest)
 
     if head == "config":
         from argos.cli.commands.config import main as config_main
