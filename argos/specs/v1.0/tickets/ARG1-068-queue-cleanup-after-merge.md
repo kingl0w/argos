@@ -1,7 +1,7 @@
 ---
 id: ARG1-068
 title: Operator-driven queue cleanup primitive (remove shipped tickets from ## Queue)
-status: queued
+status: ready
 layer: 2
 depends_on: [ARG1-054]
 blocks: []
