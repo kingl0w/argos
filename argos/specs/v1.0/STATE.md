@@ -188,6 +188,15 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-06-13T21:25:52Z-ARG1-069-done ticket=ARG1-069 author=verifier session=local-2026-06-13 -->
+- **[2026-06-13] ARG1-069 — done** (headless prompt injection into spawn_session)
+  - New `argos/cli/orchestrator/session_prompt.py`: pure `build_prompt(ticket_id, ticket_text)` + I/O wrapper `build_prompt_for_ticket(ticket_id, ticket_dir=...)`. Codifies the six standing rules (ADR-001 stdlib, ADR-002 AC-stdlib, verify-before-commit, `argos state-append`/no direct STATE.md edit, push-don't-merge, escalate via escalation.md), inlines the ticket text, instructs read-and-implement.
+  - `argos/cli/worktree.py` `spawn_session`: now invokes the harness headlessly as `[binary, "-p", prompt, "--allow-dangerously-skip-permissions"]` (permission flag overridable via `permission_arg`). Prompt auto-built from the ticket file under `<worktree>/argos/specs/v1.0/tickets`; degrades gracefully to a read-the-file instruction when absent. Still exports ARGOS_TICKET/EPIC/WORKTREE and returns the child exit code. Callers (run_session command, retry runner) unchanged.
+  - Tests: `test_session_prompt.py` (9, pure builder) + `test_spawn_session.py` (5, argv-capturing stub binary asserts `-p` + prompt). Full sweep `python3 -m unittest discover -s argos/cli/tests` = 333 pass. `argos lint-imports argos/` exits 0 (stdlib only).
+  - Decision: done.
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->

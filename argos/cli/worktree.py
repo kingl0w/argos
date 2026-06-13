@@ -18,8 +18,13 @@ Responsibilities:
   session. Resolution order: ``ARGOS_RUN_SESSION_HARNESS_BIN`` env override
   → ``harness.claude_code_binary`` from the loaded config (ARG1-053) →
   ``claude`` on PATH.
-- Spawn the session with cwd pinned to the worktree path, inheriting
-  stdio so an interactive Claude Code session keeps its tty.
+- Spawn the session **headlessly** (ARG1-069) with cwd pinned to the
+  worktree path: ``claude -p "<prompt>" --allow-dangerously-skip-permissions``.
+  The prompt is auto-built from the ticket file (resolved inside the
+  worktree) plus the standing argos rules, so the session lands with a
+  full instruction instead of an empty interactive shell. Headless mode
+  (``-p``) needs no tty, so parallel dispatch works without terminal
+  contention.
 
 ADR-001: Python ≥3.9 stdlib only. Subprocess to git is the contract; no
 third-party imports.
@@ -33,6 +38,8 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Sequence
 
+from argos.cli.orchestrator import session_prompt
+
 __all__ = [
     "WorktreeError",
     "InvalidWorktreePathError",
@@ -42,6 +49,7 @@ __all__ = [
     "BRANCH_PREFIX",
     "WORKTREES_SUBDIR",
     "HARNESS_ENV_VAR",
+    "TICKET_SUBDIR_IN_WORKTREE",
     "compute_branch_name",
     "find_repo_root",
     "validate_worktree_path",
@@ -55,6 +63,9 @@ __all__ = [
 BRANCH_PREFIX = "argos"
 WORKTREES_SUBDIR = (".argos", "worktrees")
 HARNESS_ENV_VAR = "ARGOS_RUN_SESSION_HARNESS_BIN"
+# Where the ticket file lives inside a spawned worktree, relative to its
+# root. The prompt-builder (ARG1-069) reads from here to inline the ticket.
+TICKET_SUBDIR_IN_WORKTREE = "argos/specs/v1.0/tickets"
 
 
 class WorktreeError(Exception):
@@ -255,13 +266,35 @@ def spawn_session(
     epic: str,
     extra_args: Optional[Sequence[str]] = None,
     env: Optional[dict[str, str]] = None,
+    permission_arg: str = session_prompt.DEFAULT_PERMISSION_ARG,
+    ticket_dir: Optional[Path] = None,
 ) -> int:
-    """Run ``binary`` with cwd pinned to ``worktree_abs``; return its exit code.
+    """Run ``binary`` headlessly in ``worktree_abs``; return its exit code.
 
-    Stdin / stdout / stderr are inherited from the calling process so an
-    interactive Claude Code session keeps its tty. Three context env vars
-    are exported to the child so downstream tooling (the session's
-    planner, future hooks) can read them without re-parsing argv:
+    The harness is invoked as::
+
+        binary -p "<prompt>" --allow-dangerously-skip-permissions
+
+    (ARG1-069). The prompt is auto-built by
+    :mod:`argos.cli.orchestrator.session_prompt` from the ticket file —
+    resolved under ``<worktree_abs>/argos/specs/v1.0/tickets`` (overridable
+    via ``ticket_dir``) — plus the standing argos rules, so the spawned
+    session lands with a full instruction. If the ticket file is absent from
+    the worktree, the prompt degrades to a read-the-file instruction rather
+    than failing the spawn.
+
+    Headless ``-p`` needs no tty, so parallel dispatch works without terminal
+    contention. Stdio is inherited from the calling process, so the harness's
+    output flows to the orchestrator (where the dispatch loop logs it).
+
+    ``permission_arg`` is the trailing permission flag (default
+    :data:`session_prompt.DEFAULT_PERMISSION_ARG`); pass a different value to
+    select another permission mode. ``extra_args`` are appended after the
+    harness flags for one-off needs (no caller currently uses them).
+
+    Three context env vars are exported to the child so downstream tooling
+    (the session's planner, future hooks) can read them without re-parsing
+    argv:
 
     - ``ARGOS_TICKET``
     - ``ARGOS_EPIC``
@@ -271,7 +304,12 @@ def spawn_session(
     child_env["ARGOS_TICKET"] = ticket
     child_env["ARGOS_EPIC"] = epic
     child_env["ARGOS_WORKTREE"] = str(worktree_abs)
-    cmd = [binary]
+
+    if ticket_dir is None:
+        ticket_dir = worktree_abs / TICKET_SUBDIR_IN_WORKTREE
+    prompt = session_prompt.build_prompt_for_ticket(ticket, ticket_dir=ticket_dir)
+
+    cmd = [binary, "-p", prompt, permission_arg]
     if extra_args:
         cmd.extend(extra_args)
     completed = subprocess.run(
