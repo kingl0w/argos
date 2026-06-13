@@ -164,6 +164,18 @@ _none_
   - Unblocks ARG1-054 (cycle close) — the failing test was the last blocker on its merge gate.
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-06-13T16:30:24Z-ARG1-068-done ticket=ARG1-068 author=verifier session=arg1-068-worktree -->
+- **[2026-06-13T00:00:00Z] ARG1-068 — `argos sync --clean-queue` operator queue-cleanup primitive** (worktree `argos-v1-arg1-068`, branch `ticket/ARG1-068`)
+  - Files changed: `argos/cli/commands/clean_queue.py` (new — `clean_queue()` library + `main()` shim, mirrors ARG1-054's cycle_close structural-edit discipline), `argos/cli/__main__.py` (modify — `sync --clean-queue` dispatch branch + `_STUB_TICKETS` comment), `argos/cli/tests/test_clean_queue.py` (new — 15 tests, hermetic temp-git-repo harness with the real ARG1-032 pre-commit hook), `argos/specs/v1.0/tickets/ARG1-068-queue-cleanup-after-merge.md` (Plan + Verification appended).
+  - Subcommand name: `argos sync --clean-queue` (parallels `--close-cycle`).
+  - Shipped-id source = live `## Done this cycle` ticket ids (exact-heading bound, suffixed historical archives excluded) ∪ `ticket=` ids across `argos/specs/cycles/*.md`. Removes exactly the matching `## Queue` bullets; unshipped bullets, placeholder, and blanks preserved verbatim.
+  - ARGOS_CYCLE_CLOSE=1 bypass exported only on the single `git commit` subprocess (AC#4); `git add` + atomic `tempfile`+`os.replace` rewrite use unmodified env (AC#5). No-removal runs return None → idempotent (AC#3) and empty-queue no-op (AC#7).
+  - ACs: 9/9 met. AC#8 `python3 -m unittest discover -s argos/cli/tests` → 304 tests OK (15 new). AC#9 `python3 -m argos.cli lint-imports argos/` → exit 0.
+  - Did not touch `cycle_close.py`, the hook, or the orchestrator dispatch loop (ticket §Non-goals). Stdlib-only (ADR-001 / ADR-002).
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
