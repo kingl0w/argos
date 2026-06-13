@@ -8,7 +8,6 @@ Epic 4 — severity-tiered verifier. ARG1-030 (rubric + structured output) is th
 
 ## Queue
 
-- ARG1-002 argos init
 - ARG1-003 argos status
 - ARG1-005 argos attend
 - ARG1-004 argos sync
