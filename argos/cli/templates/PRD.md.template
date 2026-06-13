@@ -1,0 +1,57 @@
+# {{PROJECT}} — Product Requirements
+
+**Created:** {{DATE}}
+**Status:** Draft
+**Owner:** _you_
+
+## One-line pitch
+
+{{DESC}}
+
+## Problem
+
+_What breaks in the world without this? Who notices? How often?_
+
+Replace this paragraph with a concrete description of the pain point. Name the user (even if it's just you). Name the current workaround. If there isn't a current workaround, explain why the pain has been tolerable until now and what changed.
+
+## Target user
+
+- **Primary:** _who is this built for first_
+- **Secondary:** _who benefits incidentally but isn't designed-for_
+- **Non-user:** _someone this is explicitly not for, to protect scope_
+
+## Goals
+
+1. _First-order outcome. Observable. Testable._
+2. _Second-order outcome._
+3. _…_
+
+Each goal should be falsifiable: a sentence starting with "after v1, a user can…" or "after v1, we measure X < Y."
+
+## Non-goals
+
+- _Something tempting but out of scope for v1._
+- _Something a reasonable person might assume is in scope but isn't._
+- _Something the architecture will not support, by design._
+
+Non-goals are load-bearing. They are what you say "no" to when scope-creep arrives.
+
+## Success metrics
+
+- **Leading indicator:** _the thing you can measure weekly that tells you you're on track_
+- **Lagging indicator:** _the outcome you actually care about_
+- **Guardrail:** _the thing that must not get worse while you pursue the above_
+
+## Constraints
+
+- **Technical:** _platform, language, deploy target, performance envelope_
+- **Resource:** _time, budget, people_
+- **External:** _compliance, partner APIs, deadlines outside your control_
+
+## Open questions
+
+- [ ] _Things you don't know yet and need to answer before or during v1. Turn each into an ADR when answered._
+
+## Out-of-band context
+
+_Anything a reader needs to know that isn't obvious from the repo — prior art, adjacent projects, constraints from a conversation the code can't see._

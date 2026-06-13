@@ -191,6 +191,16 @@ _none_
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-06-13T21:47:08Z-ARG1-002 ticket=ARG1-002 author=verifier session=local-2026-06-13 -->
+- **[2026-06-13] ARG1-002 — verified** (worktree `.argos/worktrees/ARG1-002-live`)
+  - New: `argos/cli/commands/init.py`, `argos/cli/templates/` (5 scaffold sources copied as-is from ARG1-050/ARG1-053 templates), `argos/cli/tests/test_init.py`
+  - Edited: `argos/cli/__main__.py` (dispatch `init` to the real impl; drop it from the stub table)
+  - `argos init` scaffolds `argos/specs/{STATE,PRD,ARCHITECTURE}.md`, `argos/config.toml`, `.argos/local.toml`, ensures `.argos/` in `.gitignore`, registers the ARG1-052 STATE.md merge driver, installs the ARG1-032 pre-commit hook (best-effort), and is idempotent via a `.argos/.initialized` sentinel (`--force` re-scaffolds but never touches `argos/specs/tickets/`).
+  - AC harness: `python3 -m unittest argos.cli.tests.test_init` → 8 pass, 0 fail. All 7 acceptance criteria verified end-to-end in a fresh `mktemp -d`. Regression: full `argos/cli/tests` suite 341 pass. `lint-imports` clean (ADR-001 stdlib-only; no dep adds).
+  - Findings: 0 critical, 0 major, 0 minor. Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
