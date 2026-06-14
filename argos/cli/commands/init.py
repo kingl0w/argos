@@ -62,6 +62,10 @@ _PLACEHOLDER_TEMPLATES = {
     "STATE.md.template": Path("argos") / "specs" / "STATE.md",
     "PRD.md.template": Path("argos") / "specs" / "PRD.md",
     "ARCHITECTURE.md.template": Path("argos") / "specs" / "ARCHITECTURE.md",
+    # The target repo's own language/dependency/test conventions, injected
+    # into every dispatched session's prompt. Scaffolded as an operator-facing
+    # stub that must be filled in per repo.
+    "conventions.md.template": Path("argos") / "conventions.md",
 }
 
 # Config templates copied verbatim (static defaults, no placeholders).

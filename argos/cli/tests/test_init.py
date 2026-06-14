@@ -82,6 +82,16 @@ class InitFreshTests(unittest.TestCase):
         self.assertTrue((self.root / "argos/config.toml").is_file())
         self.assertTrue((self.root / ".argos/local.toml").is_file())
 
+    def test_conventions_scaffolded_and_rendered(self) -> None:
+        """argos/conventions.md is scaffolded, names the project, no placeholders."""
+        _run_init(self.root, "--name", "Acme", "--prefix", "ACME")
+        conventions = self.root / "argos" / "conventions.md"
+        self.assertTrue(conventions.is_file(), conventions)
+        text = conventions.read_text(encoding="utf-8")
+        self.assertIn("Acme", text)
+        self.assertNotIn("{{", text)
+        self.assertNotIn("}}", text)
+
     def test_gitignore_has_argos_entry(self) -> None:
         """AC#4: .gitignore contains the exact whole line ``.argos/``."""
         _run_init(self.root)
