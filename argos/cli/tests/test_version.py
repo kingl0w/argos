@@ -98,11 +98,13 @@ class CLIErrorPathTests(unittest.TestCase):
 class CLIStubSubcommandTests(unittest.TestCase):
     """Sanity guard: registered public stubs exit non-zero until implemented."""
 
-    def test_status_stub_exits_nonzero(self) -> None:
-        result = _run("status")
+    def test_attend_stub_exits_nonzero(self) -> None:
+        # ``status`` was implemented in ARG1-003 and is exercised by
+        # test_status.py; ``attend`` (ARG1-005) remains a stub.
+        result = _run("attend")
         self.assertNotEqual(
             result.returncode, 0,
-            "expected non-zero exit from unimplemented 'status' stub",
+            "expected non-zero exit from unimplemented 'attend' stub",
         )
 
 
