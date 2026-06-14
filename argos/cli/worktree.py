@@ -307,7 +307,13 @@ def spawn_session(
 
     if ticket_dir is None:
         ticket_dir = worktree_abs / TICKET_SUBDIR_IN_WORKTREE
-    prompt = session_prompt.build_prompt_for_ticket(ticket, ticket_dir=ticket_dir)
+    # ``target_root`` is the worktree checkout: the conventions file lives at
+    # ``<worktree_abs>/argos/conventions.md``. If it is missing/empty,
+    # build_prompt_for_ticket raises MissingConventionsError after writing a
+    # blocking escalation — the spawn aborts rather than dispatching silently.
+    prompt = session_prompt.build_prompt_for_ticket(
+        ticket, ticket_dir=ticket_dir, target_root=worktree_abs
+    )
 
     cmd = [binary, "-p", prompt, permission_arg]
     if extra_args:

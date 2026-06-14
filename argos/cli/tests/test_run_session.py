@@ -53,7 +53,12 @@ def _init_repo(root: Path) -> None:
     _git("config", "user.email", "test@example.com", cwd=root)
     _git("config", "user.name", "test", cwd=root)
     (root / "seed.txt").write_text("seed\n", encoding="utf-8")
-    _git("add", "seed.txt", cwd=root)
+    # Commit target conventions so the worktree checkout carries them; without
+    # this file spawn_session escalates instead of dispatching (ARG1-073).
+    conventions = root / "argos" / "conventions.md"
+    conventions.parent.mkdir(parents=True, exist_ok=True)
+    conventions.write_text("## Language\n\n- stdlib only.\n", encoding="utf-8")
+    _git("add", "seed.txt", "argos/conventions.md", cwd=root)
     _git("commit", "-q", "-m", "seed", cwd=root)
 
 

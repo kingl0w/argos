@@ -1,0 +1,41 @@
+# {{PROJECT}} — Target conventions
+
+> **Operator: fill this in.** These are **{{PROJECT}}'s own** language, dependency,
+> and test conventions. Argos reads this file from the target repo and injects it
+> verbatim into every dispatched session's prompt, ahead of the Argos-contract
+> rules. It is how a coding session learns the rules that are specific to *this*
+> repo rather than to Argos itself.
+>
+> Until you replace the placeholders below, sessions are dispatched with a stub.
+> Be concrete: name the language and version floor, the dependency policy, and how
+> acceptance criteria are expected to run. Each line is binding on every session.
+
+## Language
+
+- _e.g. "Implementation is TypeScript 5.x, compiled with `tsc --strict`."_
+
+## Dependencies
+
+- _e.g. "Runtime deps are pinned in `package.json`; adding one is a plan-level
+  decision, not the coder's to make."_
+
+## Tests / acceptance criteria
+
+- _e.g. "AC commands run under `npm test` with no network access."_
+
+<!--
+EXAMPLE — this is the model to follow. The block below is how Argos states its
+OWN conventions in its own repo (see argos/conventions.md). Delete it once you
+have filled in the sections above for {{PROJECT}}.
+
+## Language
+
+- Implementation is Python >=3.9, standard library only (ADR-001). Do not add
+  any third-party runtime dependency; that is an ADR-level decision, not the
+  coder's to make.
+
+## Tests / acceptance criteria
+
+- Acceptance-criteria tooling is standard library only as well (ADR-002). Every
+  AC command must run under a fresh python3 >=3.9 with no `pip install` step.
+-->

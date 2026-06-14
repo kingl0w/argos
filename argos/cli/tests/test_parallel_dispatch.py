@@ -124,8 +124,13 @@ def _git_init_repo(repo_root: Path) -> str:
         check=True,
     )
     (repo_root / "README.md").write_text("seed", encoding="utf-8")
+    # Commit target conventions so worktree checkouts carry them; without this
+    # file spawn_session escalates instead of dispatching (ARG1-073).
+    conventions = repo_root / "argos" / "conventions.md"
+    conventions.parent.mkdir(parents=True, exist_ok=True)
+    conventions.write_text("## Language\n\n- stdlib only.\n", encoding="utf-8")
     subprocess.run(
-        ["git", "-C", str(repo_root), "add", "README.md"],
+        ["git", "-C", str(repo_root), "add", "README.md", "argos/conventions.md"],
         check=True,
         capture_output=True,
     )
