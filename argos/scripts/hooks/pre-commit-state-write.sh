@@ -46,7 +46,7 @@ STATE_PATHS="argos/specs/STATE.md argos/specs/v1.0/STATE.md"
 # verifier", so they MUST appear verbatim in the messages emitted here.
 
 AWK_VALIDATE='
-BEGIN { in_block = 0 }
+BEGIN { in_block = 0; section = "" }
 
 # Diff metadata — skip without inspecting.
 /^---[[:space:]]/         { next }
@@ -69,18 +69,55 @@ BEGIN { in_block = 0 }
 /^Binary files/           { next }
 /^\\[[:space:]]/          { next }   # "\ No newline at end of file"
 
-# Any deletion is a "modified outside append-block" violation: the schema is
-# append-only outside cycle close, and cycle close already bypassed above.
-/^-/ {
-    body = substr($0, 2)
-    printf("STATE.md modified outside append-block (%s): deletion of %s\n",
-           file, body) > "/dev/stderr"
+# The diff is generated with full context (-U<big>), so every unchanged line of
+# the file is present as a context line (leading space). That lets us attribute
+# each changed line to its ## section (ARG1-078): we track the current section
+# as we walk the diff in file order, then apply section-scoped rules.
+{
+    marker = substr($0, 1, 1)
+    rest = substr($0, 2)
+}
+
+# --- Section tracking -------------------------------------------------------
+# Update the post-image section from context ( ) or added (+) level-2 headings.
+# A removed (-) heading does not update it — the unchanged heading context that
+# still precedes the change already set the right section.
+(marker != "-" && rest ~ /^[[:space:]]*##[[:space:]]+/) {
+    s = rest
+    sub(/^[[:space:]]*#+[[:space:]]*/, "", s)
+    sub(/[[:space:]]+$/, "", s)
+    section = s
+    if (marker == " ") next   # context heading — nothing to validate
+    # an added heading falls through to the addition rules below
+}
+
+# Context lines (unchanged) only feed section tracking.
+marker == " " { next }
+
+# --- Exempt sections: Queue and In progress (ARG1-078) ----------------------
+# These are operator-managed work lists, not the audit trail. Plain bullets and
+# blank lines may be freely added OR removed; no entry-block requirement.
+(section == "Queue" || section == "In progress") {
+    if (marker == "-") next                        # deletions allowed
+    if (rest ~ /^[[:space:]]*$/) next              # blank additions allowed
+    if (rest ~ /^[[:space:]]*-[[:space:]]*/) next  # bullet additions allowed
+    printf("STATE.md modified outside append-block (%s): %s\n",
+           file, rest) > "/dev/stderr"
     exit 1
 }
 
-# Additions: validate the state machine.
-/^\+/ {
-    line = substr($0, 2)
+# --- Strict sections: Done this cycle + everything else ---------------------
+# Any deletion is a violation: the schema is append-only outside cycle close,
+# and cycle close already bypassed above.
+marker == "-" {
+    printf("STATE.md modified outside append-block (%s): deletion of %s\n",
+           file, rest) > "/dev/stderr"
+    exit 1
+}
+
+# Additions: validate the verifier-only entry-block state machine.
+marker == "+" {
+    line = rest
 
     # Blank lines (whitespace-only) are permitted anywhere — state-append
     # inserts a leading blank before each block and a trailing blank before
@@ -169,9 +206,10 @@ for STATE_REL in $STATE_PATHS; do
             ;;
     esac
 
-    # -U0 = no context lines, so every +/- line is real signal. --no-color
-    # avoids any escape codes that would confuse the awk regexes.
-    diff_text="$(git diff --cached --no-color -U0 -- "$STATE_REL" 2>/dev/null || true)"
+    # Full context (-U1000000) emits every unchanged line as a context line so
+    # the awk validator can attribute each changed line to its ## section
+    # (ARG1-078). --no-color avoids escape codes that would confuse the regexes.
+    diff_text="$(git diff --cached --no-color -U1000000 -- "$STATE_REL" 2>/dev/null || true)"
 
     # Empty diff (e.g., file staged for mode change only) — nothing to validate.
     if [ -z "$diff_text" ]; then
