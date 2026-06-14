@@ -19,7 +19,7 @@ Responsibilities:
   → ``harness.claude_code_binary`` from the loaded config (ARG1-053) →
   ``claude`` on PATH.
 - Spawn the session **headlessly** (ARG1-069) with cwd pinned to the
-  worktree path: ``claude -p "<prompt>" --allow-dangerously-skip-permissions``.
+  worktree path: ``claude -p "<prompt>" --dangerously-skip-permissions``.
   The prompt is auto-built from the ticket file (resolved inside the
   worktree) plus the standing argos rules, so the session lands with a
   full instruction instead of an empty interactive shell. Headless mode
@@ -273,7 +273,7 @@ def spawn_session(
 
     The harness is invoked as::
 
-        binary -p "<prompt>" --allow-dangerously-skip-permissions
+        binary -p "<prompt>" --dangerously-skip-permissions
 
     (ARG1-069). The prompt is auto-built by
     :mod:`argos.cli.orchestrator.session_prompt` from the ticket file —

@@ -2,7 +2,7 @@
 
 ``spawn_session`` (ARG1-020) runs the Claude Code harness headlessly::
 
-    claude -p "<prompt>" --allow-dangerously-skip-permissions
+    claude -p "<prompt>" --dangerously-skip-permissions
 
 Without a prompt the spawned session lands in a fresh worktree with no
 instruction — the gap this ticket closes. This module assembles that prompt
@@ -33,7 +33,7 @@ __all__ = [
 
 # The permission mode used for headless dispatch (ARG1-069 AC#2; flag
 # confirmed present in ``claude --help``).
-DEFAULT_PERMISSION_ARG = "--allow-dangerously-skip-permissions"
+DEFAULT_PERMISSION_ARG = "--dangerously-skip-permissions"
 
 
 # The standing per-ticket rules, codified verbatim per ARG1-069 AC#1. Every
