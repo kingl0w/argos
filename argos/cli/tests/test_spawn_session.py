@@ -62,6 +62,13 @@ def _make_argv_recorder(tmp: Path) -> tuple[Path, Path]:
     return script, record
 
 
+def _write_conventions(root: Path) -> None:
+    """Write a minimal target ``argos/conventions.md`` under ``root``."""
+    conv = root / "argos" / "conventions.md"
+    conv.parent.mkdir(parents=True, exist_ok=True)
+    conv.write_text("## Language\n\n- stdlib only.\n", encoding="utf-8")
+
+
 def _read_argv(record: Path) -> list[str]:
     raw = record.read_bytes()
     parts = raw.split(b"\x00")
@@ -80,6 +87,9 @@ class SpawnSessionArgvTests(unittest.TestCase):
         (self.ticket_dir / "ARG1-099-fixture.md").write_text(
             _FIXTURE_TICKET, encoding="utf-8"
         )
+        # Target conventions are sourced from the worktree; without this file
+        # spawn_session escalates instead of dispatching (ARG1-073).
+        _write_conventions(self.worktree)
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
@@ -100,8 +110,10 @@ class SpawnSessionArgvTests(unittest.TestCase):
         prompt = argv[1]
         self.assertIn("ARG1-099", prompt)
         self.assertIn("the widget frobnicates the sprocket", prompt)
-        for rule in session_prompt.STANDING_RULES:
+        for rule in session_prompt.CONTRACT_RULES:
             self.assertIn(rule, prompt)
+        # Target conventions are inlined from the worktree's conventions.md.
+        self.assertIn("Target conventions (from this repo):", prompt)
 
     def test_exports_context_env(self) -> None:
         script = self.worktree / "harness.sh"
@@ -149,6 +161,7 @@ class SpawnSessionArgvTests(unittest.TestCase):
         # prompt degrades but the harness is still invoked headlessly.
         bare = Path(self._tmp.name).resolve() / "bare"
         bare.mkdir()
+        _write_conventions(bare)
         script, record = _make_argv_recorder(bare)
         rc = spawn_session(
             str(script),
