@@ -45,3 +45,46 @@ PRD §Distribution lists `argos sync` as one of three v1.0 commands. ARCHITECTUR
 - ARG1-013 (auto-fix retry — orchestrator module)
 - ARG1-022 (parallel dispatch)
 - ARG1-032 (pre-commit hook — scripts dir)
+
+## Plan
+
+New module `argos/cli/reconcile.py` holds the three pure reconciliation
+functions (so the command body stays thin and the logic is unit-testable
+against temp repos, mirroring `clean_queue.py`):
+
+1. `reconcile_state_git(*, state_file, repo_root, main_ref="main")` —
+   read-only. Parse STATE.md, collect `ticket=` ids of `argos:entry` blocks
+   inside `## Done this cycle`, and for each id check whether its ticket id
+   appears (word-boundary) in any subject of `git log --first-parent <main_ref>`.
+   Missing → `MISMATCH` carrying the offending ticket ids. Never mutates
+   (Non-goal: no auto-fix of STATE↔git).
+2. `reconcile_worktrees(*, repo_root, main_ref="main", dry_run)` — enumerate
+   `git worktree list --porcelain`, keep those under `.argos/worktrees/`,
+   and mark a worktree prunable iff its branch is fully merged into
+   `<main_ref>` (`git merge-base --is-ancestor`) **and** the branch is gone
+   from `origin` (no `refs/remotes/origin/<branch>`; trivially true when no
+   `origin` remote exists). dry-run → `WOULD-FIX` list; real → `git worktree
+   remove --force` + `git branch -D` + `git worktree prune`, status `FIXED`.
+   Purely local git — no implicit fetch — so the command stays offline-safe.
+3. `reconcile_issues(*, tickets_dir, repo_root, dry_run, backend)` — re-render
+   existing GitHub Issue bodies from ticket markdown via a `gh`-shelling
+   backend (the v0.5 `argos-sync.sh push` semantics, update-only per the
+   Non-goal). Skipped (reported `OK` with a "skipped" note) when `--no-issues`
+   is passed or `gh` is unavailable/unauthenticated — the only network phase.
+
+`argos/cli/commands/sync.py` (CLI shim):
+- `--close-cycle` / `--clean-queue` strip the flag and delegate to
+  `cycle_close.main` / `clean_queue.main`, returning their exit code (AC#4).
+- otherwise run all three phases, print a one-line-per-phase status table to
+  stdout (vocabulary `OK` / `WOULD-FIX` / `MISMATCH` in dry-run; `FIXED`
+  replaces `WOULD-FIX` in a real run), then exit non-zero iff state-git is a
+  `MISMATCH`, writing the ticket id + missing-commit description to stderr
+  (AC#3). `--dry-run` always exits 0 (AC#1). `--no-issues` skips phase 3
+  with zero `gh` invocations (AC#5).
+
+`argos/cli/__main__.py`: replace the inline `sync` handling with a single
+delegation to `argos.cli.commands.sync.main(rest)`.
+
+Tests in `argos/cli/tests/test_sync.py`: temp git repos (file:// bare origin
+for the worktree-prune case) plus a fake issue backend and a PATH-shadow `gh`
+sentinel for the offline assertion. Stdlib `unittest` only (ADR-001/002).

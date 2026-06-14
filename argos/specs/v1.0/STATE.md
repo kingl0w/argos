@@ -200,6 +200,18 @@ _none_
   - Findings: 0 critical, 0 major, 0 minor. Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-06-14T00:54:09Z-ARG1-004 ticket=ARG1-004 author=verifier session=arg1-004-worktree -->
+- **[2026-06-13] ARG1-004 — verified** (autonomous session, worktree `ARG1-004-c5f1c8c`, branch `argos/ARG1-004`)
+  - Files added: `argos/cli/reconcile.py`, `argos/cli/commands/sync.py`, `argos/cli/tests/test_sync.py`
+  - Files edited: `argos/cli/__main__.py` (route `sync` to the full command), `argos/specs/v1.0/tickets/ARG1-004-argos-sync.md` (Plan section)
+  - `argos sync` implements three reconciliations — ticket↔Issue re-render (network, `--no-issues`/gh-unavailable skips), STATE↔git first-parent check (mismatch → exit 1, no auto-fix), `.argos/worktrees/` prune (merged + deleted-on-origin) — plus `--close-cycle`/`--clean-queue` delegation.
+  - ACs: 5/5 verified live via the `argos` launcher. AC#1 `sync --dry-run` exit 0, three phases OK/WOULD-FIX/MISMATCH. AC#2 merged+origin-deleted worktree pruned, gone from `git worktree list`. AC#3 done-this-cycle ticket without a main merge commit → exit 1, stderr names ticket id + `git log --first-parent main`. AC#4 `sync --close-cycle` archived 1 block, exit 0; idempotent re-run exit 0. AC#5 `sync --no-issues` with a PATH-shadow `gh` sentinel made zero gh invocations.
+  - Tests: `python3 -m unittest argos.cli.tests.test_sync -v` → 21 tests OK. Regression: `python3 -m unittest discover -s argos/cli/tests` → 362 tests OK. `argos lint-imports` clean on all three new files (rc=0); stdlib only, no deps added (ADR-001/002).
+  - Findings: 0 critical, 0 major, 0 minor.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Known drift
 
 <!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-030-shim ticket=ARG1-030 author=verifier session=arg1-030-worktree -->
