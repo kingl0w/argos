@@ -36,15 +36,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from argos.cli.orchestrator import dispatch as dispatch_module
-from argos.cli.orchestrator import independence
 from argos.cli.queue import (
     QueueSectionMissingError,
     StateFileNotFoundError,
     parse_queue_file,
 )
-
-_DEFAULT_STATE_FILE = "argos/specs/v1.0/STATE.md"
-_DEFAULT_TICKET_DIR = independence.DEFAULT_TICKET_DIR
+from argos.cli.spec_paths import default_spec_paths
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -74,15 +71,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--state-file",
-        default=_DEFAULT_STATE_FILE,
-        help="path to STATE.md (default: %(default)s)",
+        default=None,
+        help=(
+            "path to STATE.md (default: auto-detected — argos/specs/v1.0/STATE.md "
+            "if present, else argos/specs/STATE.md)"
+        ),
     )
     parser.add_argument(
         "--ticket-dir",
-        default=_DEFAULT_TICKET_DIR,
+        default=None,
         help=(
             "directory holding ticket files for independence detection "
-            "(default: %(default)s)"
+            "(default: auto-detected alongside STATE.md — "
+            "argos/specs/v1.0/tickets or argos/specs/tickets)"
         ),
     )
     parser.add_argument(
@@ -226,8 +227,15 @@ def main(argv: list[str]) -> int:
         sys.stderr.write("orchestrate: --batch-size must be >= 1\n")
         return 2
 
+    # Resolve STATE.md and the ticket dir from a single probe of the spec tree
+    # (ARG1-075) so v1.0 and flat-scaffolded repos both work with bare
+    # `orchestrate`; explicit --state-file / --ticket-dir always win.
+    state_default, ticket_default = default_spec_paths()
+    state_file = args.state_file or state_default
+    ticket_dir = args.ticket_dir or ticket_default
+
     try:
-        ticket_ids = parse_queue_file(args.state_file)
+        ticket_ids = parse_queue_file(state_file)
     except StateFileNotFoundError as exc:
         sys.stderr.write(f"orchestrate: {exc}\n")
         return 1
@@ -243,7 +251,7 @@ def main(argv: list[str]) -> int:
         ticket_ids = ticket_ids[: args.batch_size]
 
     if args.dry_run:
-        return _do_dry_run(ticket_ids, args.ticket_dir)
+        return _do_dry_run(ticket_ids, ticket_dir)
 
     if not args.epic:
         sys.stderr.write(
@@ -266,7 +274,7 @@ def main(argv: list[str]) -> int:
         max_parallel=max_parallel,
         repo_root=repo_root,
         dispatch_root=dispatch_root,
-        ticket_dir=args.ticket_dir,
+        ticket_dir=ticket_dir,
         info_stream=sys.stdout,
         auto_fix_retries=auto_fix_retries,
     )
