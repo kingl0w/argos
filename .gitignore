@@ -56,3 +56,7 @@ Cargo.lock
 .DS_Store
 Thumbs.db
 *.log
+
+# Runtime dispatch artifacts (per-run, not part of the template)
+argos/specs/dispatch/EPIC-*/
+.claude/worktrees/
