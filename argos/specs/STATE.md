@@ -44,6 +44,16 @@ Tickets completed since the last cycle close. Cleared when you close a cycle (we
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-06-14T00:33:20Z-ARG1-003 ticket=ARG1-003 author=verifier session=local-arg1-003 -->
+- **[2026-06-13] ARG1-003 — verified** (session local-arg1-003, worktree `.argos/worktrees/ARG1-003-c5f1c8c/`)
+  - Implemented `argos status` integrity oracle: `argos/cli/integrity.py` (four checks: state_md, config, escalations, git_alignment) + `argos/cli/commands/status.py` (`--json`, `--repo-root`), wired into `argos/cli/__main__.py` (status no longer a stub).
+  - Tests: `argos/cli/tests/test_status.py` (20 cases incl. all 6 ACs); retargeted obsolete `status` stub guard in `argos/cli/tests/test_version.py` to `attend`.
+  - AC harness: all 6 ACs verified live (clean init→exit 0; unclosed block→STATE.md+`unclosed entry`; malformed escalation names path; undrained blocking→`undrained escalation`; `--json` 4 keys pass/fail + matching exit; `time` user+sys=0.041s < 2.0). Full suite 361 pass; lint-imports clean (stdlib-only, ADR-001).
+  - Findings: 0 critical, 0 major, 0 minor
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Open decisions
 
 Product or architecture calls that are pending and block one or more queued tickets. Each becomes an ADR once decided.

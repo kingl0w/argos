@@ -11,10 +11,11 @@ is routed by subcommand name. Subcommands fall into two groups:
   ``escalation-validate`` → :mod:`argos.cli.escalation_validator`,
   ``frontmatter-parse`` → :mod:`argos.cli.commands.frontmatter_parse`,
   ``lint-imports`` → :mod:`argos.cli.lint_imports`.
-- **Implemented public subcommands** ``init`` → :mod:`argos.cli.commands.init`
-  and ``config`` → :mod:`argos.cli.commands.config`.
-- **Public-surface stubs** for ARG1-003 / ARG1-004 / ARG1-005:
-  ``status`` / ``sync`` / ``attend`` print a "not yet implemented"
+- **Implemented public subcommands** ``init`` → :mod:`argos.cli.commands.init`,
+  ``config`` → :mod:`argos.cli.commands.config`, and ``status`` →
+  :mod:`argos.cli.commands.status`.
+- **Public-surface stubs** for ARG1-004 / ARG1-005:
+  ``sync`` / ``attend`` print a "not yet implemented"
   message and exit non-zero. They exist so ``argos --help`` lists them.
 
 Error contracts:
@@ -63,7 +64,6 @@ INTERNAL_SUBCOMMANDS = (
 # reconciliation) remains in ARG1-004.
 _STUB_TICKETS = {
     "sync": "ARG1-004",
-    "status": "ARG1-003",
     "attend": "ARG1-005",
 }
 
@@ -136,6 +136,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "config":
         from argos.cli.commands.config import main as config_main
         return config_main(rest)
+
+    if head == "status":
+        from argos.cli.commands.status import main as status_main
+        return status_main(rest)
 
     if head == "escalate":
         from argos.cli.commands.escalate import main as escalate_main

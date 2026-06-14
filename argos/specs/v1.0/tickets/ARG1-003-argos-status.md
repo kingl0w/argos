@@ -49,3 +49,23 @@ ARCHITECTURE.md §Invariants names `argos status` as the integrity oracle. v0.5 
 - ARG1-011 (/orchestrate slash command)
 - ARG1-022 (parallel dispatch — separate module)
 - ARG1-054 (cycle close — separate command)
+
+## Plan
+
+Implement `argos status` as a stdlib-only integrity oracle (ADR-001/002).
+
+**Module split**
+- `argos/cli/integrity.py` — pure checker. `run_checks(repo_root, *, now=None) -> IntegrityReport`. Four `CheckResult` records keyed `state_md`, `config`, `escalations`, `git_alignment`, each `passed: bool` + `messages: list[str]`. No I/O beyond reading repo files + `git log`.
+- `argos/cli/commands/status.py` — argparse (`--json`, `--repo-root`), resolves repo root via `git rev-parse --show-toplevel` (fallback CWD), formats output, returns exit code (0 iff all pass).
+- Wire `status` in `argos/cli/__main__.py` (replace the ARG1-003 stub).
+- `argos/cli/tests/test_status.py` — unittest, one tmp repo per AC.
+
+**Check semantics**
+1. `state_md` — parse `argos/specs/STATE.md` via `state_parser.parse`; on `StateBlockError` fail with `STATE.md: {err}` (carries `unclosed entry`). Then every parsed block's `ticket` must resolve to a file `{ticket}.md`/`{ticket}-*.md` under `argos/specs/tickets/` (fallback `argos/specs/v1.0/tickets/`).
+2. `config` — require `argos/config.toml` (or `.template`) to exist; load project + local (`.argos/local.toml`/`.template`) via `config.load` with a swallowed warn stream; fail on `ConfigParseError` (names file) or `Config.validate()` type errors.
+3. `escalations` — every `*.md` under `argos/specs/escalations/` except `README.md`/dotfiles must pass `escalation_validator.validate` (malformed → fail, names path). A valid `severity: blocking` file with no `## Resolution`/`**Drained:**` marker → fail with `undrained escalation` + path.
+4. `git_alignment` — ticket of each block under `## Done this cycle` must appear in `git log` reachable from HEAD (cap `-n 500`). Not-a-git-repo or unparseable STATE.md → skipped (pass).
+
+**Output**
+- Text mode: success → one stdout summary line; failure → per-check diagnostics to stderr, exit 1.
+- `--json`: JSON object on stdout `{ok, state_md, config, escalations, git_alignment, diagnostics}` with each check key = `"pass"`/`"fail"`; same exit code.
