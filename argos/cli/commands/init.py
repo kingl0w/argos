@@ -309,6 +309,7 @@ def _scaffold(repo_root: Path, args: argparse.Namespace) -> tuple[str, str]:
         out.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 
     ensure_gitignore_entry(repo_root, ".argos/")
+    ensure_gitignore_entry(repo_root, "*.lock")
 
     if _ensure_git_repo(repo_root):
         _register_merge_driver(repo_root)

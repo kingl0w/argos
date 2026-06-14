@@ -2,7 +2,7 @@
 .specs/.argos-initialized
 .argos/*
 !.argos/local.toml.template
-**/STATE.md.lock
+**/*.lock
 
 # Node
 node_modules/
@@ -60,3 +60,4 @@ Thumbs.db
 # Runtime dispatch artifacts (per-run, not part of the template)
 argos/specs/dispatch/EPIC-*/
 .claude/worktrees/
+argos/specs/dispatch/
