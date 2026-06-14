@@ -98,13 +98,13 @@ class CLIErrorPathTests(unittest.TestCase):
 class CLIStubSubcommandTests(unittest.TestCase):
     """Sanity guard: registered public stubs exit non-zero until implemented."""
 
-    def test_sync_stub_exits_nonzero(self) -> None:
-        # ``status`` was implemented in ARG1-003 and is exercised by
-        # test_status.py; ``sync`` (ARG1-004) remains a stub.
-        result = _run("sync")
-        self.assertNotEqual(
-            result.returncode, 0,
-            "expected non-zero exit from unimplemented 'sync' stub",
+    def test_no_public_stubs_remain(self) -> None:
+        # All public subcommands (init/sync/status/attend) are implemented as
+        # of ARG1-002/003/004/005; the stub map must be empty.
+        from argos.cli.__main__ import _STUB_TICKETS
+        self.assertEqual(
+            _STUB_TICKETS, {},
+            "_STUB_TICKETS should be empty once all public commands ship",
         )
 
 
