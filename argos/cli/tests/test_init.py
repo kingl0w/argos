@@ -182,5 +182,47 @@ class InitForceTests(unittest.TestCase):
         self.assertEqual(ticket.stat().st_mtime_ns, ticket_before_mtime)
 
 
+class InitPositionalNameTests(unittest.TestCase):
+    """ARG1-074: `argos init <project>` positional aliases --name."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def test_positional_sets_project_name_in_cwd(self) -> None:
+        # `argos init Zephyr` → scaffolds cwd, project name "Zephyr".
+        proc = _run_init(self.root, "Zephyr")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("Zephyr", proc.stdout)
+        self.assertTrue((self.root / "argos/specs/STATE.md").is_file())
+        self.assertIn("Zephyr", (self.root / "argos/specs/STATE.md").read_text(encoding="utf-8"))
+
+    def test_positional_with_path_targets_path(self) -> None:
+        # `argos init Zephyr --path <target>` → name "Zephyr", scaffolds target.
+        target = self.root / "subrepo"
+        target.mkdir()
+        proc = _run_init(self.root, "Zephyr", "--path", str(target))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue((target / "argos/specs/STATE.md").is_file())
+        self.assertIn("Zephyr", (target / "argos/specs/STATE.md").read_text(encoding="utf-8"))
+        # Nothing scaffolded in cwd itself.
+        self.assertFalse((self.root / "argos/specs/STATE.md").is_file())
+
+    def test_explicit_name_flag_wins_over_positional(self) -> None:
+        proc = _run_init(self.root, "Positional", "--name", "FlagName")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        text = (self.root / "argos/specs/STATE.md").read_text(encoding="utf-8")
+        self.assertIn("FlagName", text)
+        self.assertNotIn("Positional", text)
+
+    def test_bare_init_still_works(self) -> None:
+        # No positional, no --name: unchanged behavior (detected name, cwd).
+        proc = _run_init(self.root)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("initialized", proc.stdout)
+        self.assertTrue((self.root / "argos/specs/STATE.md").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()
