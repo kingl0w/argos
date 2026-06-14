@@ -87,6 +87,29 @@ setup_repo() {
     )
 }
 
+# Like setup_repo, but seeds the repo committing ONLY argos/scripts (the hook +
+# installer) and NOT STATE.md, so the file's first commit exercises the
+# untracked->tracked "first appearance" path (ARG1-073). The hook is installed.
+setup_repo_without_state() {
+    sandbox="$1"
+    rm -rf "$sandbox"
+    mkdir -p "$sandbox"
+    (
+        cd "$sandbox"
+        git init -q
+        git config user.email "test@example.com"
+        git config user.name  "test"
+        git config commit.gpgsign false
+        mkdir -p argos/scripts/hooks argos/specs
+        cp "$HOOK" argos/scripts/hooks/pre-commit-state-write.sh
+        cp "$INSTALLER" argos/scripts/install-hooks.sh
+        chmod +x argos/scripts/hooks/pre-commit-state-write.sh argos/scripts/install-hooks.sh
+        git add argos/scripts
+        git commit -q -m "seed (no STATE.md)"
+        sh argos/scripts/install-hooks.sh > install.out 2>&1
+    )
+}
+
 # -----------------------------------------------------------------------------
 # AC#1: install-hooks.sh registers the hook into .git/hooks/pre-commit.
 # -----------------------------------------------------------------------------
@@ -313,6 +336,29 @@ test_state_append_interop() {
 }
 
 # -----------------------------------------------------------------------------
+# ARG1-073: the first appearance of STATE.md (untracked -> tracked) is creation,
+# not modification, and must commit cleanly without the ARGOS_CYCLE_CLOSE bypass.
+# The scaffolded STATE.md is a wall of prose that would fail append-only if it
+# were treated as a modification, so a clean commit proves the carve-out fires.
+# -----------------------------------------------------------------------------
+test_untracked_state_commits_clean() {
+    sandbox="$1"
+    setup_repo_without_state "$sandbox"
+    (
+        cd "$sandbox"
+        # STATE.md has never been tracked; scaffold it fresh (prose + a seed
+        # block, like `argos init` does) and commit it.
+        make_state_seed argos/specs/STATE.md
+        git add argos/specs/STATE.md
+        if git commit -q -m "scaffold STATE.md" 2> commit.err; then
+            pass "ARG1-073 untracked STATE.md first commit succeeds without ARGOS_CYCLE_CLOSE"
+        else
+            fail "ARG1-073 untracked STATE.md first commit rejected: $(cat commit.err)"
+        fi
+    )
+}
+
+# -----------------------------------------------------------------------------
 # Run all tests.
 # -----------------------------------------------------------------------------
 test_installer_registers   "$ROOT_TMP/s1"
@@ -322,6 +368,7 @@ test_coder_author_fails    "$ROOT_TMP/s4"
 test_cycle_close_bypass    "$ROOT_TMP/s5"
 test_unrelated_commit_passes "$ROOT_TMP/s6"
 test_state_append_interop  "$ROOT_TMP/s7"
+test_untracked_state_commits_clean "$ROOT_TMP/s8"
 
 PASSES=$(wc -l < "$COUNTER_DIR/pass" | tr -d ' ')
 FAILS=$(wc -l < "$COUNTER_DIR/fail" | tr -d ' ')
