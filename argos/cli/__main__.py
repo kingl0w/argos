@@ -41,6 +41,7 @@ PUBLIC_SUBCOMMANDS = (
     "config",
     "orchestrate",
     "independence",
+    "queue",
 )
 
 # Internal subcommands implemented in earlier tickets; routed by the
@@ -75,6 +76,7 @@ def _print_usage(stream) -> None:
         "  config    get/validate config keys (project + local TOML)\n"
         "  orchestrate  read STATE.md ## Queue and emit the next dispatch batch (ARG1-011)\n"
         "  independence decide whether named tickets are independent for parallel dispatch (ARG1-021)\n"
+        "  queue     add/remove a ticket bullet in STATE.md ## Queue (ARG1-078)\n"
         "\n"
         "Internal subcommands:\n"
         "  state-parse           parse STATE.md append-mostly blocks\n"
@@ -149,6 +151,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "independence":
         from argos.cli.commands.independence import main as independence_main
         return independence_main(rest)
+
+    if head == "queue":
+        from argos.cli.commands.queue import main as queue_main
+        return queue_main(rest)
 
     if head == "sync":
         # ARG1-004 implements the full three-phase reconciliation; the command

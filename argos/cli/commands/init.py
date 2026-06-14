@@ -1,5 +1,16 @@
 """``argos init`` — scaffold a repository into an Argos project (ARG1-002).
 
+Invocation forms (ARG1-074 reconciles the CLI with the documented
+``argos init <project>`` form):
+
+- ``argos init`` — project name detected (git origin basename, else dir name),
+  scaffolds the current directory.
+- ``argos init myproject`` — optional positional sets the project name; still
+  scaffolds the current directory.
+- ``argos init --path /x`` / ``argos init myproject --path /x`` — scaffolds
+  ``/x``. The positional is a pure alias for ``--name`` (``--name`` wins if both
+  are given); it never changes the target directory.
+
 Scaffolds, relative to the target repo root (CWD unless ``--path`` is
 given):
 
@@ -338,7 +349,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="re-scaffold, overwriting generated files (never touches tickets)",
     )
-    parser.add_argument("--name", default=None, help="project name (default: detected)")
+    parser.add_argument(
+        "project",
+        nargs="?",
+        default=None,
+        help=(
+            "project name (positional alias for --name; the documented "
+            "'argos init <project>' form). Scaffolding still targets the "
+            "current directory unless --path is given. --name takes precedence "
+            "if both are supplied."
+        ),
+    )
+    parser.add_argument("--name", default=None, help="project name (default: positional, else detected)")
     parser.add_argument(
         "--prefix", default=None, help="ticket prefix (default: derived from name)"
     )
@@ -349,6 +371,11 @@ def main(argv: list[str] | None = None) -> int:
         "--path", default=None, help="target repo root (default: current directory)"
     )
     args = parser.parse_args(argv)
+
+    # The positional is an alias for --name; --name wins if both are given.
+    # Target directory is independent (cwd unless --path), so
+    # `argos init myproject` names the project but still scaffolds cwd.
+    args.name = args.name or args.project
 
     repo_root = Path(args.path).resolve() if args.path else Path.cwd()
     sentinel = repo_root / _SENTINEL_REL

@@ -110,6 +110,60 @@ setup_repo_without_state() {
     )
 }
 
+# A STATE.md seed with populated ## Queue and ## In progress sections (alongside
+# the audit-trail ## Done this cycle block), used by the ARG1-078 section-scoped
+# exemption tests.
+make_state_seed_sections() {
+    out="$1"
+    cat > "$out" <<'EOF'
+# Argos — State
+
+**Last updated:** 2026-04-26
+**Updated by:** _verifier (automated)_
+
+## Queue
+
+- ARG1-100 existing queued ticket
+
+## In progress
+
+- [ ] _none_
+
+## Done this cycle
+
+<!-- argos:entry id=2026-04-26T00:00:00Z-ARG1-SEED ticket=ARG1-SEED author=verifier session=seed -->
+- Seed entry for AC harness.
+<!-- /argos:entry -->
+
+## Known drift
+
+- _none_
+EOF
+}
+
+# Like setup_repo, but seeds STATE.md with Queue + In progress + Done sections
+# (ARG1-078). The hook is installed.
+setup_repo_sections() {
+    sandbox="$1"
+    rm -rf "$sandbox"
+    mkdir -p "$sandbox"
+    (
+        cd "$sandbox"
+        git init -q
+        git config user.email "test@example.com"
+        git config user.name  "test"
+        git config commit.gpgsign false
+        mkdir -p argos/scripts/hooks argos/specs
+        cp "$HOOK" argos/scripts/hooks/pre-commit-state-write.sh
+        cp "$INSTALLER" argos/scripts/install-hooks.sh
+        chmod +x argos/scripts/hooks/pre-commit-state-write.sh argos/scripts/install-hooks.sh
+        make_state_seed_sections argos/specs/STATE.md
+        git add argos
+        git commit -q -m "seed (with Queue + In progress)"
+        sh argos/scripts/install-hooks.sh > install.out 2>&1
+    )
+}
+
 # -----------------------------------------------------------------------------
 # AC#1: install-hooks.sh registers the hook into .git/hooks/pre-commit.
 # -----------------------------------------------------------------------------
@@ -359,6 +413,129 @@ test_untracked_state_commits_clean() {
 }
 
 # -----------------------------------------------------------------------------
+# ARG1-078 section-scoped exemption. ## Queue and ## In progress accept plain
+# bullet adds AND removes with no entry-block requirement and no bypass, while
+# ## Done this cycle stays strictly append-only (verifier entry blocks only).
+# -----------------------------------------------------------------------------
+test_queue_add_bullet_clean() {
+    sandbox="$1"
+    setup_repo_sections "$sandbox"
+    (
+        cd "$sandbox"
+        python3 - argos/specs/STATE.md <<'PY'
+import sys
+p = sys.argv[1]
+t = open(p, encoding="utf-8").read()
+t = t.replace("## Queue\n\n", "## Queue\n\n- ARGO-001\n", 1)
+open(p, "w", encoding="utf-8").write(t)
+PY
+        git add argos/specs/STATE.md
+        if git commit -q -m "queue add" 2> commit.err; then
+            pass "ARG1-078 plain bullet added under ## Queue commits clean (no bypass)"
+        else
+            fail "ARG1-078 queue add rejected: $(cat commit.err)"
+        fi
+    )
+}
+
+test_queue_remove_bullet_clean() {
+    sandbox="$1"
+    setup_repo_sections "$sandbox"
+    (
+        cd "$sandbox"
+        python3 - argos/specs/STATE.md <<'PY'
+import sys
+p = sys.argv[1]
+t = open(p, encoding="utf-8").read()
+t = t.replace("- ARG1-100 existing queued ticket\n", "", 1)
+open(p, "w", encoding="utf-8").write(t)
+PY
+        git add argos/specs/STATE.md
+        if git commit -q -m "queue remove" 2> commit.err; then
+            pass "ARG1-078 bullet removed from ## Queue commits clean (no bypass)"
+        else
+            fail "ARG1-078 queue remove rejected: $(cat commit.err)"
+        fi
+    )
+}
+
+test_in_progress_add_bullet_clean() {
+    sandbox="$1"
+    setup_repo_sections "$sandbox"
+    (
+        cd "$sandbox"
+        python3 - argos/specs/STATE.md <<'PY'
+import sys
+p = sys.argv[1]
+t = open(p, encoding="utf-8").read()
+t = t.replace("## In progress\n\n", "## In progress\n\n- ARG1-100 building\n", 1)
+open(p, "w", encoding="utf-8").write(t)
+PY
+        git add argos/specs/STATE.md
+        if git commit -q -m "in-progress add" 2> commit.err; then
+            pass "ARG1-078 plain bullet added under ## In progress commits clean (no bypass)"
+        else
+            fail "ARG1-078 in-progress add rejected: $(cat commit.err)"
+        fi
+    )
+}
+
+test_done_nonentry_addition_rejected() {
+    sandbox="$1"
+    setup_repo_sections "$sandbox"
+    (
+        cd "$sandbox"
+        python3 - argos/specs/STATE.md <<'PY'
+import sys
+p = sys.argv[1]
+t = open(p, encoding="utf-8").read()
+t = t.replace("## Done this cycle\n\n", "## Done this cycle\n\n- sneaky non-entry line\n", 1)
+open(p, "w", encoding="utf-8").write(t)
+PY
+        git add argos/specs/STATE.md
+        if git commit -m "done tamper" > commit.out 2>&1; then
+            fail "ARG1-078 non-entry addition under ## Done this cycle unexpectedly succeeded"
+            return 0
+        fi
+        if grep -F -q -- 'STATE.md modified outside append-block' commit.out; then
+            pass "ARG1-078 non-entry addition under ## Done this cycle still rejected"
+        else
+            fail "ARG1-078 done-tamper missing required substring; got: $(cat commit.out)"
+        fi
+    )
+}
+
+test_done_entry_deletion_rejected() {
+    sandbox="$1"
+    setup_repo_sections "$sandbox"
+    (
+        cd "$sandbox"
+        python3 - argos/specs/STATE.md <<'PY'
+import re, sys
+p = sys.argv[1]
+t = open(p, encoding="utf-8").read()
+t = re.sub(
+    r"<!-- argos:entry [^>]+ -->\n.*?\n<!-- /argos:entry -->\n",
+    "",
+    t,
+    flags=re.DOTALL,
+)
+open(p, "w", encoding="utf-8").write(t)
+PY
+        git add argos/specs/STATE.md
+        if git commit -m "done delete" > commit.out 2>&1; then
+            fail "ARG1-078 entry-block deletion under ## Done this cycle unexpectedly succeeded"
+            return 0
+        fi
+        if grep -F -q -- 'STATE.md modified outside append-block' commit.out; then
+            pass "ARG1-078 entry-block deletion under ## Done this cycle still rejected (no bypass)"
+        else
+            fail "ARG1-078 done-delete missing required substring; got: $(cat commit.out)"
+        fi
+    )
+}
+
+# -----------------------------------------------------------------------------
 # Run all tests.
 # -----------------------------------------------------------------------------
 test_installer_registers   "$ROOT_TMP/s1"
@@ -369,6 +546,11 @@ test_cycle_close_bypass    "$ROOT_TMP/s5"
 test_unrelated_commit_passes "$ROOT_TMP/s6"
 test_state_append_interop  "$ROOT_TMP/s7"
 test_untracked_state_commits_clean "$ROOT_TMP/s8"
+test_queue_add_bullet_clean        "$ROOT_TMP/s9"
+test_queue_remove_bullet_clean     "$ROOT_TMP/s10"
+test_in_progress_add_bullet_clean  "$ROOT_TMP/s11"
+test_done_nonentry_addition_rejected "$ROOT_TMP/s12"
+test_done_entry_deletion_rejected  "$ROOT_TMP/s13"
 
 PASSES=$(wc -l < "$COUNTER_DIR/pass" | tr -d ' ')
 FAILS=$(wc -l < "$COUNTER_DIR/fail" | tr -d ' ')
