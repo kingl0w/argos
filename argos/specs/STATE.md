@@ -44,6 +44,16 @@ Tickets completed since the last cycle close. Cleared when you close a cycle (we
   - Decision: pass
 <!-- /argos:entry -->
 
+
+<!-- argos:entry id=2026-06-14T00:41:22Z-ARG1-005 ticket=ARG1-005 author=verifier session=autonomous-2026-06-13 -->
+**[2026-06-13] ARG1-005 — verified** (autonomous session, worktree `ARG1-005-c5f1c8c`)
+  - Implements `argos attend`: drains `argos/specs/escalations/`, presents each pending escalation oldest-first, records the operator's decision in the ticket's `## Decisions` section, removes the file. `--list` shows pending without prompting; `--ticket` filters by `ticket_id`. Drained files (carrying `## Resolution`) and the `README.md` sentinel are skipped.
+  - Files added: `argos/cli/commands/attend.py`, `argos/cli/tests/test_attend.py`. Edited: `argos/cli/__main__.py` (route `attend`, drop from stub map).
+  - Tests: `python3 -m unittest argos.cli.tests.test_attend` → 20 pass; full suite 361 pass. `lint-imports` clean (stdlib only, ADR-001).
+  - AC harness: all 6 acceptance criteria run and quoted (AC#1 against the live repo, AC#2-#6 in sandbox fixtures); 0 critical / 0 major / 0 minor.
+  - Decision: pass
+<!-- /argos:entry -->
+
 ## Open decisions
 
 Product or architecture calls that are pending and block one or more queued tickets. Each becomes an ADR once decided.

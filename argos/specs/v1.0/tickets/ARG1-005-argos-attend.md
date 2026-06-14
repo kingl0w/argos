@@ -47,3 +47,42 @@ ARCHITECTURE.md §Components/Escalation Channel names `argos attend` as the v1.0
 - ARG1-011 (/orchestrate slash command)
 - ARG1-020 (worktree spawn)
 - ARG1-052 (merge driver)
+
+## Plan
+
+**New files**
+- `argos/cli/commands/attend.py` — the `argos attend` subcommand.
+- `argos/cli/tests/test_attend.py` — stdlib `unittest` coverage.
+
+**Edit**
+- `argos/cli/__main__.py` — route `attend` to the new module (remove it from the
+  stub list).
+
+**Behaviour**
+- Default escalations dir = `argos/specs/escalations/`, tickets dir =
+  `argos/specs/tickets/`, both resolved from the repo root (walk up for an
+  `argos/specs` marker, mirroring `commands/escalate.py`). `--dir` /
+  `--tickets-dir` override for tests.
+- A "pending" escalation is a file under the escalations dir whose body has **no
+  `## Resolution` heading** (drained files carry that section and are an audit
+  trail — see `argos/specs/escalations/README.md` and the two existing files).
+  This is what lets AC#1 pass against the real repo: both files there are
+  drained, so the queue reads as empty.
+- Each non-drained file is parsed + validated with
+  `argos.cli.escalation_validator` (`parse_frontmatter` + `validate`). Any
+  malformed file makes the scan fail fast: exit non-zero, one stderr line per
+  bad path (AC#5).
+- Pending escalations are ordered by frontmatter `created` (oldest first;
+  `Z` normalised to `+00:00` for 3.9 `fromisoformat`).
+- `--list`: one line per pending escalation (`ticket_id  created  severity
+  filename`); empty queue prints `no pending escalations[ for <TICKET>]`; exit 0.
+- drain (default): for each pending escalation in order, present it on stdout,
+  read one line of decision from stdin (EOF stops the drain — no partial save),
+  append the decision to the ticket's `## Decisions` section (created if absent),
+  then delete the escalation file. Empty decision = skip (leave file). Missing
+  ticket file = stderr error, leave file, exit non-zero.
+- `--ticket` filters by frontmatter `ticket_id` in both modes.
+
+**AC mapping**: #1 drained-skip → empty queue message; #2/#3 `--list` content +
+chronological order; #4 stdin decision → ticket `## Decisions` + file removed;
+#5 malformed → non-zero + path on stderr; #6 filtered empty queue message.

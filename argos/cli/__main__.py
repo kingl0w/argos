@@ -13,8 +13,8 @@ is routed by subcommand name. Subcommands fall into two groups:
   ``lint-imports`` → :mod:`argos.cli.lint_imports`.
 - **Implemented public subcommands** ``init`` → :mod:`argos.cli.commands.init`
   and ``config`` → :mod:`argos.cli.commands.config`.
-- **Public-surface stubs** for ARG1-003 / ARG1-004 / ARG1-005:
-  ``status`` / ``sync`` / ``attend`` print a "not yet implemented"
+- **Public-surface stubs** for ARG1-003 / ARG1-004:
+  ``status`` / ``sync`` print a "not yet implemented"
   message and exit non-zero. They exist so ``argos --help`` lists them.
 
 Error contracts:
@@ -64,7 +64,6 @@ INTERNAL_SUBCOMMANDS = (
 _STUB_TICKETS = {
     "sync": "ARG1-004",
     "status": "ARG1-003",
-    "attend": "ARG1-005",
 }
 
 
@@ -136,6 +135,10 @@ def main(argv: list[str] | None = None) -> int:
     if head == "config":
         from argos.cli.commands.config import main as config_main
         return config_main(rest)
+
+    if head == "attend":
+        from argos.cli.commands.attend import main as attend_main
+        return attend_main(rest)
 
     if head == "escalate":
         from argos.cli.commands.escalate import main as escalate_main
