@@ -358,9 +358,14 @@ class TestCommitBypass(_RepoFixture):
             message, "clean queue: remove 2 shipped ticket(s)"
         )
 
-    def test_hook_blocks_queue_deletion_without_bypass(self) -> None:
-        """A queue-bullet deletion is rejected by the hook absent the bypass —
-        proves the bypass is load-bearing, not incidental."""
+    def test_queue_deletion_commits_clean_without_bypass(self) -> None:
+        """A ## Queue bullet deletion commits cleanly with no bypass (ARG1-078).
+
+        ARG1-078 made ## Queue an operator-managed section exempt from the
+        append-only rule, so removing a shipped ticket's queue bullet no longer
+        needs ARGOS_CYCLE_CLOSE. (Pre-ARG1-078 the hook rejected this; this test
+        previously asserted that rejection. clean_queue still sets the bypass on
+        its commit, which is now belt-and-suspenders for the Queue-only edit.)"""
         state_path = _seed_state(self.repo, _STATE_FIXTURE)
 
         original = state_path.read_text(encoding="utf-8")
@@ -372,11 +377,9 @@ class TestCommitBypass(_RepoFixture):
         env_no_bypass = os.environ.copy()
         env_no_bypass.pop("ARGOS_CYCLE_CLOSE", None)
         res = _git(
-            ["commit", "-m", "should fail"], cwd=self.repo, env=env_no_bypass
+            ["commit", "-m", "queue cleanup"], cwd=self.repo, env=env_no_bypass
         )
-        self.assertNotEqual(res.returncode, 0)
-        self.assertIn("STATE.md modified outside append-block", res.stderr)
-        _git_check(["checkout", "--", "argos/specs/v1.0/STATE.md"], cwd=self.repo)
+        self.assertEqual(res.returncode, 0, res.stderr)
 
 
 class TestAtomicRewrite(_RepoFixture):
