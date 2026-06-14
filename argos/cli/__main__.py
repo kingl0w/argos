@@ -13,11 +13,9 @@ is routed by subcommand name. Subcommands fall into two groups:
   ``lint-imports`` → :mod:`argos.cli.lint_imports`.
 - **Implemented public subcommands** ``init`` → :mod:`argos.cli.commands.init`,
   ``config`` → :mod:`argos.cli.commands.config`, ``status`` →
-  :mod:`argos.cli.commands.status`, and ``attend`` →
-  :mod:`argos.cli.commands.attend`.
-- **Public-surface stub** for ARG1-004:
-  ``sync`` prints a "not yet implemented"
-  message and exit non-zero. They exist so ``argos --help`` lists them.
+  :mod:`argos.cli.commands.status`, ``attend`` →
+  :mod:`argos.cli.commands.attend`, and ``sync`` →
+  :mod:`argos.cli.commands.sync`. All public subcommands are implemented.
 
 Error contracts:
 - No args → ``usage:`` line on stderr, exit 2.
@@ -59,14 +57,9 @@ INTERNAL_SUBCOMMANDS = (
     "lint-imports",
 )
 
-# Mapping of ARG1-0NN follow-up tickets that implement each public stub.
-# ``sync`` is partially implemented: ``--close-cycle`` ships in ARG1-054 and
-# ``--clean-queue`` in ARG1-068; the broader sync surface (ticket ↔ Issue
-# reconciliation) remains in ARG1-004.
-_STUB_TICKETS = {
-    "sync": "ARG1-004",
-
-}
+# Mapping of ARG1-0NN follow-up tickets that implement each remaining public
+# stub.
+_STUB_TICKETS: dict[str, str] = {}
 
 
 def _print_usage(stream) -> None:
@@ -158,19 +151,11 @@ def main(argv: list[str] | None = None) -> int:
         return independence_main(rest)
 
     if head == "sync":
-        # ARG1-054 / ARG1-068 ship the sync actions implemented today:
-        # ``argos sync --close-cycle`` (archive ## Done this cycle) and
-        # ``argos sync --clean-queue`` (remove shipped tickets from ## Queue).
-        # Other invocations remain stubbed against ARG1-004.
-        if "--close-cycle" in rest:
-            from argos.cli.commands.cycle_close import main as cycle_close_main
-            sync_args = [a for a in rest if a != "--close-cycle"]
-            return cycle_close_main(sync_args)
-        if "--clean-queue" in rest:
-            from argos.cli.commands.clean_queue import main as clean_queue_main
-            sync_args = [a for a in rest if a != "--clean-queue"]
-            return clean_queue_main(sync_args)
-        return _stub(head)
+        # ARG1-004 implements the full three-phase reconciliation; the command
+        # also routes ``--close-cycle`` (ARG1-054) and ``--clean-queue``
+        # (ARG1-068) to their delegate handlers.
+        from argos.cli.commands.sync import main as sync_main
+        return sync_main(rest)
 
     if head in PUBLIC_SUBCOMMANDS:
         return _stub(head)
