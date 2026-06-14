@@ -66,6 +66,14 @@ __all__ = [
 # Per the verifier-output schema (`argos/specs/v1.0/schemas/verifier-output.md`
 # §Location): the verifier appends its block inside the ticket file. Worktrees
 # share the v1.0 layout, so the same relative path works in any worktree.
+#
+# Intentionally NOT routed through argos.cli.spec_paths' resolver (ARG1-075):
+# this is an in-worktree path, not a cwd-relative CLI default, and the resolver
+# keys off an `argos/specs/v1.0/STATE.md` probe — a signal that is absent in a
+# dispatched worktree (worktrees carry the ticket tree but not necessarily a
+# STATE.md), so probing here would mis-resolve to the flat tree. The worktree
+# layout is a fixed schema contract; foreign-repo worktree handling is tracked
+# separately under ARG1-075.
 DEFAULT_TICKET_DIR_IN_WORKTREE = "argos/specs/v1.0/tickets"
 
 # Per the escalation writer (ARG1-041): default escalation dir is

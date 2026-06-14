@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from argos.cli.spec_paths import default_state_file
 from argos.cli.state_parser import Block, parse as parse_state
 
 __all__ = [
@@ -37,7 +38,6 @@ __all__ = [
     "main",
 ]
 
-_DEFAULT_STATE_FILE = "argos/specs/v1.0/STATE.md"
 _DEFAULT_CYCLES_DIR = "argos/specs/cycles"
 _DONE_SECTION = "Done this cycle"
 _SECTION_HEADING_RE = re.compile(rf"^## {re.escape(_DONE_SECTION)}\s*$")
@@ -289,8 +289,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--state-file",
-        default=_DEFAULT_STATE_FILE,
-        help="path to STATE.md (default: %(default)s)",
+        default=None,
+        help=(
+            "path to STATE.md (default: auto-detected — argos/specs/v1.0/STATE.md "
+            "if present, else argos/specs/STATE.md)"
+        ),
     )
     parser.add_argument(
         "--cycles-dir",
@@ -340,7 +343,7 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(f"sync --close-cycle: {exc}\n")
         return 1
 
-    state_path = Path(args.state_file)
+    state_path = Path(args.state_file or default_state_file(repo_root))
     if not state_path.is_absolute():
         state_path = (repo_root / state_path).resolve()
     cycles_path = Path(args.cycles_dir)

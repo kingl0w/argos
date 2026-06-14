@@ -156,6 +156,17 @@ for STATE_REL in $STATE_PATHS; do
             OVERALL_RC=1
             continue
             ;;
+        A*)
+            # First appearance: STATE.md is newly added (present in the index,
+            # absent from HEAD) — this is creation, not modification, so the
+            # append-only invariant does not apply (ARG1-073). `argos init`
+            # scaffolds STATE.md and commits it as the repo's first commit;
+            # without this carve-out the whole scaffold is a wall of `+` prose
+            # lines that the awk validator rejects. Allow creation.
+            # The already-tracked path (status M) below is unchanged: a tracked
+            # STATE.md still goes through full append-only awk validation.
+            continue
+            ;;
     esac
 
     # -U0 = no context lines, so every +/- line is real signal. --no-color

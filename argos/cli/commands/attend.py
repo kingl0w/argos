@@ -36,9 +36,9 @@ from pathlib import Path
 from typing import IO, List, Optional, Tuple
 
 from argos.cli import escalation_validator
+from argos.cli.spec_paths import default_ticket_dir
 
 DEFAULT_ESCALATIONS_DIR = Path("argos/specs/escalations")
-DEFAULT_TICKETS_DIR = Path("argos/specs/tickets")
 
 _RESOLUTION_HEADING = "## Resolution"
 _DECISIONS_HEADING = "## Decisions"
@@ -374,7 +374,16 @@ def main(argv: List[str]) -> int:
 
 
 def _drain(pending: List[Escalation], tickets_dir_arg: Optional[str]) -> int:
-    tickets_dir = _resolve_dir(tickets_dir_arg, DEFAULT_TICKETS_DIR)
+    if tickets_dir_arg:
+        tickets_dir = Path(tickets_dir_arg)
+    else:
+        # Auto-detect the tickets dir alongside STATE.md (ARG1-075): the v1.0
+        # tree in argos's own repo, the flat tree in a scaffolded repo. Folding
+        # attend into the shared resolver also fixes its pre-existing outlier
+        # default (it always assumed the flat argos/specs/tickets).
+        root = _find_repo_root(Path.cwd())
+        base = root if root is not None else Path.cwd()
+        tickets_dir = base / default_ticket_dir(base)
     drained = 0
     had_error = False
 

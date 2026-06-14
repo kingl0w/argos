@@ -43,7 +43,6 @@ import json
 import sys
 
 from argos.cli.orchestrator.independence import (
-    DEFAULT_TICKET_DIR,
     IndependenceError,
     MergeStagingArea,
     MissingFilesTouchedError,
@@ -54,6 +53,7 @@ from argos.cli.orchestrator.independence import (
     load_ticket,
     partition,
 )
+from argos.cli.spec_paths import default_ticket_dir
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -78,8 +78,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--ticket-dir",
-        default=DEFAULT_TICKET_DIR,
-        help="directory holding ticket files (default: %(default)s)",
+        default=None,
+        help=(
+            "directory holding ticket files (default: auto-detected — "
+            "argos/specs/v1.0/tickets if present, else argos/specs/tickets)"
+        ),
     )
     return parser
 
@@ -150,7 +153,8 @@ def main(argv: list[str]) -> int:
     except SystemExit as exc:
         return int(exc.code) if exc.code is not None else 2
 
-    tickets, rc = _load_all(args.tickets, args.ticket_dir)
+    ticket_dir = args.ticket_dir or default_ticket_dir()
+    tickets, rc = _load_all(args.tickets, ticket_dir)
     if rc != 0:
         return rc
 

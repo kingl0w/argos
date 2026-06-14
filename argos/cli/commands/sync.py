@@ -36,11 +36,9 @@ from pathlib import Path
 
 from argos.cli import reconcile
 from argos.cli.reconcile import PhaseResult, ReconcileError
+from argos.cli.spec_paths import default_spec_paths
 
 __all__ = ["main", "run_sync"]
-
-_DEFAULT_STATE_FILE = "argos/specs/v1.0/STATE.md"
-_DEFAULT_TICKETS_DIR = "argos/specs/v1.0/tickets"
 
 
 def _resolve_repo_root(arg: "str | None") -> Path:
@@ -92,13 +90,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--state-file",
-        default=_DEFAULT_STATE_FILE,
-        help="path to STATE.md (default: %(default)s)",
+        default=None,
+        help=(
+            "path to STATE.md (default: auto-detected — argos/specs/v1.0/STATE.md "
+            "if present, else argos/specs/STATE.md)"
+        ),
     )
     parser.add_argument(
         "--tickets-dir",
-        default=_DEFAULT_TICKETS_DIR,
-        help="directory of ticket markdown files (default: %(default)s)",
+        default=None,
+        help=(
+            "directory of ticket markdown files (default: auto-detected alongside "
+            "STATE.md — argos/specs/v1.0/tickets or argos/specs/tickets)"
+        ),
     )
     parser.add_argument(
         "--repo-root",
@@ -206,8 +210,11 @@ def main(argv: list) -> int:
         sys.stderr.write(f"sync: {exc}\n")
         return 1
 
-    state_file = _resolve(repo_root, args.state_file)
-    tickets_dir = _resolve(repo_root, args.tickets_dir)
+    # Resolve STATE.md and tickets dir from a single probe of the spec tree
+    # (ARG1-075) so v1.0 and flat-scaffolded repos both work; explicit flags win.
+    state_default, tickets_default = default_spec_paths(repo_root)
+    state_file = _resolve(repo_root, args.state_file or state_default)
+    tickets_dir = _resolve(repo_root, args.tickets_dir or tickets_default)
 
     try:
         return run_sync(

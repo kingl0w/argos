@@ -84,6 +84,12 @@ __all__ = [
 ]
 
 
+# Fixed in-repo fallback for the dormant signature defaults of
+# ``find_ticket_path`` / ``load_ticket`` below (every real caller passes an
+# explicit ``ticket_dir``, so this value is only hit by direct library calls,
+# and equals what the resolver yields in argos's own v1.0 tree). The CLI
+# default-resolution lives in ``argos.cli.spec_paths`` (ARG1-075): commands
+# probe the spec tree at invocation so flat-scaffolded repos resolve correctly.
 DEFAULT_TICKET_DIR = "argos/specs/v1.0/tickets"
 
 # Canonical ticket-branch prefix, mirroring ``argos.cli.worktree.BRANCH_PREFIX``
