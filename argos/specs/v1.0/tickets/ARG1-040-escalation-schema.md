@@ -243,7 +243,7 @@ severity: invalid value 'critical' (allowed: advisory, blocking)
 exit=1
 ```
 
-Shim is executable: `-rwxr-xr-x 1 taddymason taddymason 286 Apr 26 15:07 argos/cli/escalation-validate`.
+Shim is executable: `-rwxr-xr-x 1 user user 286 Apr 26 15:07 argos/cli/escalation-validate`.
 
 **Deviations from the Plan (with justification):**
 
