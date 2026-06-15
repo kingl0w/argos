@@ -162,7 +162,7 @@ Net new files: 12 (4 fixture markdown, 1 schema markdown, 7 Python — of which 
 - **Test file:** `argos/cli/tests/test_state_parser.py`.
 - **Verifier command (run from repo root):** `python3 -m pytest argos/cli/tests/test_state_parser.py -v`.
 - **Test fixture sourcing:** the four schema example files double as test fixtures (`argos/specs/v1.0/schemas/examples/state-*.md`); no separate `tests/fixtures/` directory. Tests resolve paths from `__file__` so they work regardless of CWD as long as repo layout is intact.
-- **No new runtime dependencies.** Parser uses standard library only (`re`, `dataclasses`, `pathlib`, `json`, `sys`). Pytest is the only test-time dependency and is already available on PATH (`/home/taddymason/.asdf/shims/pytest`); the verifier may need to ensure `pytest` is importable in the Python it runs (`python3 -m pip install pytest` into the active venv if `python3 -m pytest` fails).
+- **No new runtime dependencies.** Parser uses standard library only (`re`, `dataclasses`, `pathlib`, `json`, `sys`). Pytest is the only test-time dependency and is already available on PATH (`/home/user/.asdf/shims/pytest`); the verifier may need to ensure `pytest` is importable in the Python it runs (`python3 -m pip install pytest` into the active venv if `python3 -m pytest` fails).
 - **Coverage target:** every public function (`parse`, `parse_file`) and every error class is exercised by at least one test; every CLI exit-code branch (success, each of the three error fixtures plus missing-attr) is exercised by a subprocess test.
 
 ### Open questions
@@ -205,12 +205,12 @@ The following are noted but **do not block coding** per the user's planning guid
    - Exercised by `test_blocks_unordered_within_section_all_returned`, which constructs an inline fixture with three valid blocks intermixed with prose paragraphs and asserts the returned list is a 3-element list with all attributes intact (ids, tickets, authors checked positionally). Pytest line: `argos/cli/tests/test_state_parser.py::test_blocks_unordered_within_section_all_returned PASSED [ 53%]`.
 
 8. **All pytest tests pass — PASS (with host-env caveat).**
-   - See Test run section below. 13/13 tests pass under the workaround command. The Plan's exact `python3 -m pytest ...` command is unrunnable on this host due to a pre-existing host environment issue (the active venv `/home/taddymason/.graphify-venv` has no pytest), called out in the Plan's Test strategy as a known verifier concern.
+   - See Test run section below. 13/13 tests pass under the workaround command. The Plan's exact `python3 -m pytest ...` command is unrunnable on this host due to a pre-existing host environment issue (the active venv `/home/user/.graphify-venv` has no pytest), called out in the Plan's Test strategy as a known verifier concern.
 
 ### Test run
 
 **Plan's exact command:** `python3 -m pytest argos/cli/tests/test_state_parser.py -v`
-- Output: `/home/taddymason/.graphify-venv/bin/python3: No module named pytest`
+- Output: `/home/user/.graphify-venv/bin/python3: No module named pytest`
 - Exit: 1
 - Diagnosis: pre-existing host env condition (active venv lacks pytest); not a ticket failure. Plan's Test strategy explicitly anticipated this: "the verifier may need to ensure pytest is importable in the Python it runs."
 

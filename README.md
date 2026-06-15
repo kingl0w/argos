@@ -1,63 +1,127 @@
 # Argos
 
-Spec driven outer loop orchestration for AI coding agents. An open source analogue to Traycer's Bart mode, built as a thin scaffold over the native agents, slash commands, and hooks of your harness — no separate runtime, no proprietary service. Primary tested target: Claude Code. Experimental support for Cursor, Codex CLI, and Gemini CLI (see [Supported AI coding harnesses](#supported-ai-coding-harnesses)).
+Spec-driven outer-loop orchestration for AI coding agents. An open-source analogue to Traycer's Bart mode — no separate runtime, no proprietary service. Argos ships as **two complementary layers**:
 
-Argos is opinionated: specs are the source of truth, a ticket moves through a fixed loop of specialized agents, and the human steers only when plan and reality disagree.
+1. **A multi-harness scaffold** — specialized agents, slash commands, and hooks generated from a single `source/` tree into the native formats of Claude Code, Cursor, Codex CLI, and Gemini CLI.
+2. **A Python CLI (`argos`)** — the current primary interface. It scaffolds a repo, manages the ticket queue, and dispatches work as parallel git-worktree sessions that build, test, verify, and **push** — never merge.
+
+Argos is opinionated: specs are the source of truth, a ticket moves through a fixed loop of specialized agents, and the human steers only when plan and reality disagree — and always owns the merge.
+
+> **argos builds, the operator owns the merge.**
 
 ## What Argos is
 
-- A directory layout (`argos/specs/`, plus per-harness `.claude/`, `.cursor/`, `.codex/`, `.gemini/` generated from `source/`) plus a methodology document (`ARGOS.md`) and operating rules (`argos/RULES.md`, mirrored to `CLAUDE.md` and `AGENTS.md` at build time).
-- Four agents — **planner**, **coder**, **watchdog**, **verifier** — each with a narrow job and its own allowed-tools set.
-- A small set of slash commands (`/new-ticket`, `/next`, `/steer`, `/ask`) that drive the loop.
-- CI hooks (`spec-lint`) that fail a PR if `argos/specs/STATE.md` is stale, if a ticket lacks acceptance criteria, or if an ADR is referenced but missing.
+- **A directory layout** (`argos/specs/`, plus per-harness `.claude/`, `.cursor/`, `.codex/`, `.gemini/` generated from `source/`), a methodology document (`ARGOS.md`), and operating rules (`argos/RULES.md`, mirrored to `CLAUDE.md` and `AGENTS.md` at build time).
+- **Five agents** — **orchestrator**, **planner**, **coder**, **watchdog**, **verifier** — each with a narrow job and its own allowed-tools set. The orchestrator (added with the CLI layer) reads the queue and dispatches sessions; the other four run the per-ticket loop.
+- **A set of slash commands** (`/new-ticket`, `/next`, `/orchestrate`, `/steer`, `/ask`, `/reconcile`) that drive the loop inside a harness.
+- **A standard-library-only Python CLI** (`argos`) that drives the same loop headlessly and adds queue management, parallel dispatch, escalation handling, and reconciliation.
+- **Hooks** that keep specs honest — e.g. a pre-commit hook that enforces the append-only `STATE.md` contract, and `argos status` exiting non-zero when the specs are internally inconsistent.
 
-Argos is **not** an agent framework, a fine-tune, or a hosted product. It's a template repo. Fork it, run `argos-init.sh`, and the scaffold installs itself into your project.
+Argos is **not** an agent framework, a fine-tune, or a hosted product. It is a template repo *and* a CLI. The current entry path is the **`argos init`** command (see [Quickstart](#quickstart)); the older interactive bootstrap (`argos/scripts/argos-init.sh`) still exists and is described under [The two entry paths](#the-two-entry-paths).
+
+## The CLI
+
+`argos --help` lists the public subcommands:
+
+| Command        | What it does                                                                 |
+|----------------|------------------------------------------------------------------------------|
+| `init`         | scaffold `argos/specs/`, write a per-repo `argos/conventions.md`, install hooks |
+| `queue`        | add/remove a ticket in `STATE.md`'s `## Queue`                               |
+| `orchestrate`  | read the queue and dispatch the next batch (in parallel where independent)   |
+| `status`       | exit 0 iff the specs are internally self-consistent                          |
+| `sync`         | reconcile tickets, `STATE.md`, and git                                       |
+| `attend`       | drain the escalation queue (the operator ratifies ambiguities)              |
+| `escalate`     | write an escalation file                                                      |
+| `config`       | get / validate config keys                                                   |
+| `independence` | decide whether tickets can run in parallel                                   |
+
+**Python ≥3.9, standard library only** — zero third-party runtime dependencies. That is *Argos's own* convention for its own code, enforced by `argos lint-imports`. It is **not** imposed on your project (see below). If the `argos` console script isn't on your `PATH` yet, every command also works as `python3 -m argos.cli <subcommand>`.
+
+## Conventions as data — Argos works on any repo
+
+Argos is not just for building Argos. `argos init` scaffolds a per-repo **`argos/conventions.md`** in which the *target* repo declares its **own** language, dependency, and test rules. Argos injects those conventions into every dispatched session, so each session builds to the host project's standards:
+
+- Argos's own repo declares "Python, standard-library only."
+- A FastAPI service declares its framework, its dependencies, and `pytest` as its test command.
+- A TypeScript app declares `npm test`, its lint rules, and so on.
+
+The orchestration machinery is the same everywhere; the rules are data the target owns. This is what lets Argos run on a foreign repo with no special-casing.
+
+## Execution model
+
+A dispatched session is autonomous and bounded:
+
+1. Runs in **its own git worktree** (isolated from your working tree and from sibling sessions).
+2. **Plans** against the ticket, then **writes code and tests**.
+3. **Verifies** against the ticket's acceptance criteria using the host repo's declared test command.
+4. **Pushes a branch.** It **never merges.**
+
+`argos orchestrate` runs multiple sessions **in parallel** when independence detection (`argos independence`) clears them as non-conflicting; otherwise they run serially. Finalization is deliberately conservative — push-and-preserve, or merge-on-pass only where the config explicitly opts in — and **never silent**. The operator reviews the pushed branch and merges. That boundary is the whole point: *argos builds, the operator owns the merge.*
 
 ## The loop
 
 ```
-                    ┌──────────────────────────────────────┐
-                    │       argos/specs/ (PRD, ARCH,       │
-                    │        STATE, tickets, ADRs)         │
-                    └──────────────────────────────────────┘
-                                      │
-                                      ▼
-  ┌─────────┐   plan    ┌─────────┐   diff   ┌────────────┐   report   ┌──────────┐
-  │ planner │──────────▶│  coder  │─────────▶│  watchdog  │───────────▶│ verifier │
-  └─────────┘           └─────────┘          └────────────┘            └──────────┘
-       ▲                                           │                        │
-       │                                           │ CHAOS_BLOCKED          │ pass/fail
-       │                                           ▼                        ▼
-       │                                    ┌────────────┐            ┌──────────┐
-       └────────── auto-steer ──────────────│   human    │◀───────────│ STATE.md │
-                                            │  (/steer)  │   update   │  write   │
-                                            └────────────┘            └──────────┘
+        argos/specs/  (PRD, ARCHITECTURE, STATE, tickets, ADRs, conventions)
+                                    │
+                  argos queue add ▼ │
+                          ┌───────────────┐  reads ## Queue, runs independence
+                          │  orchestrator │  detection, dispatches a batch —
+                          └───────────────┘  one git worktree per ticket
+                                    │  (parallel where independent)
+                                    ▼
+  ┌─────────┐  plan   ┌─────────┐  diff   ┌──────────┐  report  ┌──────────┐
+  │ planner │────────▶│  coder  │────────▶│ watchdog │─────────▶│ verifier │
+  └─────────┘         └─────────┘         └──────────┘          └──────────┘
+       ▲                                       │                      │ pass
+       │ auto-steer (retry once)               │ CHAOS_BLOCKED        ▼
+       │                                       ▼                 push branch ──▶ operator
+       └──────────────────────────────── operator (/steer)        + STATE.md     reviews
+                                                                   write          & merges
 ```
 
+- **orchestrator** reads `STATE.md`'s `## Queue`, decides which tickets are independent, and dispatches a batch of per-ticket sessions into isolated worktrees. It finalizes conservatively and never merges silently.
 - **planner** reads `STATE.md`, `ARCHITECTURE.md`, and the ticket; writes a Plan section into the ticket. Read-only on code.
 - **coder** executes the plan against the codebase. Cannot touch `argos/specs/`.
 - **watchdog** diffs the coder's changes against the plan. If the coder wandered (new deps, out-of-scope files, missing acceptance-criterion coverage), it emits `CHAOS_BLOCKED` and stops the loop.
-- **verifier** runs the project's tests and the ticket's acceptance criteria. Appends a Verification section. On pass, updates `STATE.md`.
+- **verifier** runs the project's tests and the ticket's acceptance criteria, appends a Verification section, and on pass updates `STATE.md`. The session pushes its branch for operator review.
 - **auto-steer** only fires on `CHAOS_BLOCKED` — the loop hands control back to the human with the mismatch summary. There is no silent recovery.
 
-Retry caps: planner→coder retries once on a flagged plan; verifier never retries itself (a failed verify is a failed ticket, not a loop).
+Retry caps: planner→coder retries once on a flagged plan; the verifier never retries itself (a failed verify is a failed ticket, not a loop).
 
 ## Quickstart
 
-1. **Use this template** on GitHub (green button → *Use this template* → *Create new repository*).
-2. Clone your new repo, then run the init script:
-   ```
-   ./argos/scripts/argos-init.sh
-   ```
-   This prompts for project name, ticket prefix, and one-line description; fills the `.template` files in `argos/specs/`; installs an `argos/.initialized` sentinel so it won't re-run.
-3. Fill in `argos/specs/PRD.md` and `argos/specs/ARCHITECTURE.md` manually. They're the input the planner reads on every ticket.
-4. Open Claude Code in the repo. Run `/new-ticket` to draft your first ticket, then `/next` to run the loop.
+The bare flow on **any repo** (no workarounds — this is the path validated end to end):
 
-A full first cycle — from init to first merged ticket — should take under 30 minutes on a fresh repo.
+```bash
+# 1. Get argos (clone the template; install the CLI, or use `python3 -m argos.cli`).
+git clone https://github.com/<you>/argos.git
+
+# 2. From inside the repo you want argos to work on:
+cd your-repo
+argos init                       # scaffolds argos/specs/, writes argos/conventions.md, installs hooks
+
+# 3. Tell argos YOUR repo's rules.
+$EDITOR argos/conventions.md     # language, dependencies, test command — injected into every session
+
+# 4. Write a ticket (with acceptance criteria) under argos/specs/.../tickets/, then queue it.
+argos queue add ABC-001
+
+# 5. Dispatch. The session builds, tests, verifies, and pushes a branch.
+argos orchestrate
+
+# 6. Review the pushed branch and merge it yourself.
+```
+
+Fill in `argos/specs/PRD.md` and `argos/specs/ARCHITECTURE.md` once — they are the input the planner reads on every ticket. Inside a harness, `/new-ticket` drafts tickets and `/orchestrate` (or `/next`) drives the loop interactively.
+
+### The two entry paths
+
+- **`argos init` (current, primary).** The CLI command: scaffolds `argos/specs/`, writes the per-repo `argos/conventions.md`, and installs the git hooks. Use this.
+- **`argos/scripts/argos-init.sh` (legacy v0.5 bootstrap).** An interactive shell script that fills the `{{PROJECT}}` / `{{PREFIX}}` / `{{DESC}}` / `{{DATE}}` placeholders in `argos/specs/**/*.template`, renames `EXAMPLE-001.md` → `<PREFIX>-001.md`, and drops an `argos/.initialized` sentinel so it won't re-run. It predates the CLI and does not install hooks or scaffold `conventions.md`; prefer `argos init`.
 
 ## Upgrading from v0.4
 
-Argos v0.5 consolidates runtime files under `argos/` instead of scattering them at the repo root. If you started on v0.4, run the one-shot migration from inside your project:
+Argos v0.5 consolidated runtime files under `argos/` instead of scattering them at the repo root. If you started on v0.4, run the one-shot migration from inside your project:
 
 ```bash
 bash argos/scripts/argos-migrate-v0.5.sh
@@ -66,8 +130,6 @@ git commit -m "Migrate to Argos v0.5 layout"
 ```
 
 The script moves `.specs/` to `argos/specs/`, `ARGOS-RULES.md` to `argos/RULES.md`, the per-script helpers to `argos/scripts/`, and regenerates the harness outputs (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.cursor/`, `.codex/`, `.gemini/`) from `source/`. It is idempotent — re-running on an already-migrated repo is a no-op.
-
-New projects using v0.5 write directly to the new layout; `argos-init.sh` needs no migration.
 
 ## Supported AI coding harnesses
 
@@ -80,7 +142,7 @@ Argos builds harness-specific output from a single `source/` directory. Not all 
 | Codex CLI   | Experimental | Files generated under `.codex/`. Not yet tested in-tool.   |
 | Gemini CLI  | Experimental | Files generated under `.gemini/`. Not yet tested in-tool.  |
 
-All harness directories are committed to the repo, so "Use this template" works instantly with Claude Code and provides a starting point for the others. Per-harness frontmatter tuning (Cursor `.mdc` fields, Codex `$ARGNAME` placeholders, Gemini minimal skills format) is queued for v0.6.
+All harness directories are committed to the repo, so "Use this template" works instantly with Claude Code and provides a starting point for the others. Per-harness frontmatter tuning (Cursor `.mdc` fields, Codex `$ARGNAME` placeholders, Gemini minimal skills format) is queued for a later release.
 
 To regenerate after editing `source/`:
 
@@ -88,31 +150,32 @@ To regenerate after editing `source/`:
 bash scripts/build.sh
 ```
 
-The build is deterministic — rebuilding from the same source produces byte-identical output.
+Re-running `scripts/build.sh` regenerates the per-harness directories from `source/`.
 
 ## Argos vs Traycer Bart
 
-| Dimension             | Traycer Bart                              | Argos                                              |
-|-----------------------|-------------------------------------------|----------------------------------------------------|
-| Runtime               | Hosted service, proprietary               | Claude Code subagents, local                       |
-| Spec format           | Opaque to user                            | Plain markdown in `argos/specs/`, git-tracked     |
-| Orchestration         | Single planner/executor                   | Four specialized agents, explicit handoff          |
-| Steering              | Implicit, model-driven                    | Manual `/steer` on `CHAOS_BLOCKED` only           |
-| Source of truth       | Platform state                            | `STATE.md` + git                                   |
-| Extensibility         | Vendor roadmap                            | Fork the template, edit the agents                 |
-| Cost model            | SaaS subscription                         | Your own model-provider API usage                  |
-| Lock-in               | High — specs live in their system         | None — delete the harness directories and you still have code |
+| Dimension       | Traycer Bart                | Argos                                                          |
+|-----------------|-----------------------------|----------------------------------------------------------------|
+| Runtime         | Hosted service, proprietary | Local: harness subagents + a stdlib-only Python CLI            |
+| Spec format     | Opaque to user              | Plain markdown in `argos/specs/`, git-tracked                  |
+| Orchestration   | Single planner/executor     | Five specialized agents; a CLI orchestrator dispatches parallel worktree sessions |
+| Merge control   | Implicit                    | Sessions push branches; the operator always owns the merge     |
+| Steering        | Implicit, model-driven      | Manual `/steer` on `CHAOS_BLOCKED` only                        |
+| Source of truth | Platform state              | `STATE.md` + git                                               |
+| Extensibility   | Vendor roadmap              | Fork the template, edit the agents, declare your own conventions |
+| Cost model      | SaaS subscription           | Your own model-provider API usage                              |
+| Lock-in         | High — specs live in their system | None — delete the harness directories and you still have code |
 
 Argos is worse at: onboarding polish, hosted dashboards, multi-user review UI. Traycer is worse at: running offline, being inspected, being forked.
 
 ## Pairing with Impeccable
 
-For frontend work, Argos pairs cleanly with [Impeccable](https://github.com/pbakaus/impeccable) — a design-quality skill suite (`/polish`, `/typeset`, `/audit`, `/harden`, etc.) that the coder agent can invoke mid-ticket. Suggested split:
+For frontend work, Argos pairs cleanly with [Impeccable](https://github.com/pbakaus/impeccable) — a design-quality skill suite that includes commands like `/polish` and `/audit`. Suggested split:
 
 - **Argos** owns *what to build* (tickets, plan, verification).
 - **Impeccable** owns *how it looks and feels* (typography, spacing, motion, a11y).
 
-Install Impeccable alongside Argos; the coder agent's allowed-tools list already permits `Skill` invocations. A frontend ticket's Plan can include steps like "after implementation, run `/polish` then `/audit`" and the verifier will check the audit report as part of acceptance.
+Install Impeccable alongside Argos. The coder agent does **not** invoke Impeccable itself — its allowed-tools are `Read, Write, Edit, Bash, Grep, Glob` (no `Skill`). Instead, on a frontend ticket (a change touching `.tsx/.jsx/.vue/.svelte/.html/.css`) it detects whether Impeccable is installed (it looks for `.claude/commands/polish.md`) and, if so, appends a "Frontend polish suggested: run `/audit` and `/polish` before closing" note to the ticket's Implementation notes. Running the skills is the operator's call.
 
 ## Directory layout
 
@@ -120,50 +183,46 @@ Install Impeccable alongside Argos; the coder agent's allowed-tools list already
 your-project/
 ├── argos/                       # Argos-controlled runtime
 │   ├── specs/                     # Living spec (PRD, architecture, state, tickets, ADRs)
+│   │   └── v1.0/                    # Versioned CLI-layer specs (agents, schemas, tickets)
+│   ├── cli/                       # The argos Python CLI (stdlib-only)
+│   │   ├── __main__.py              # Subcommand dispatch: init, queue, orchestrate, status, ...
+│   │   ├── commands/                # One module per public subcommand
+│   │   └── templates/               # Scaffold templates, incl. conventions.md.template
+│   ├── conventions.md             # THIS repo's language/dependency/test rules (scaffolded by `argos init`)
 │   ├── scripts/
-│   │   ├── argos-init.sh            # One-time project setup
-│   │   ├── argos-status.sh          # Inspect current state
-│   │   ├── argos-sync.sh            # Bidirectional GitHub Issues mirror
-│   │   ├── argos-chaos-probe.sh     # Mechanical chaos checks (called by watchdog)
-│   │   └── argos-migrate-v0.5.sh    # v0.4 → v0.5 one-shot migration
+│   │   ├── argos-init.sh             # Legacy interactive template bootstrap (pre-CLI)
+│   │   ├── argos-status.sh           # Inspect current state
+│   │   ├── argos-sync.sh             # Bidirectional GitHub Issues mirror
+│   │   ├── argos-chaos-probe.sh      # Mechanical chaos checks (called by watchdog)
+│   │   ├── argos-migrate-v0.5.sh     # v0.4 → v0.5 one-shot migration
+│   │   └── hooks/                    # Git hooks (e.g. STATE.md append-only pre-commit)
 │   └── RULES.md                   # Source of truth for project rules
-├── source/                      # Canonical agents + commands (edit here)
+├── source/                      # Canonical loop agents + commands (edit here, then build)
 │   ├── agents/                    # planner, coder, watchdog, verifier
-│   └── commands/                  # next, steer, ask, new-ticket, reconcile
+│   └── commands/                  # next, steer, ask, new-ticket, orchestrate, reconcile
 ├── scripts/
 │   └── build.sh                   # Regenerate harness outputs from source/
 ├── .claude/                     # Generated: Claude Code (harness-required at root)
-│   ├── agents/
+│   ├── agents/                    # Five agents: orchestrator, planner, coder, watchdog, verifier
 │   └── commands/
-├── .cursor/                     # Generated: Cursor (harness-required at root)
-│   ├── rules/
-│   └── commands/
-├── .codex/                      # Generated: Codex CLI (harness-required at root)
-│   ├── agents/
-│   └── prompts/
-├── .gemini/                     # Generated: Gemini CLI (harness-required at root)
-│   └── skills/
+├── .cursor/                     # Generated: Cursor (rules/ + commands/)
+├── .codex/                      # Generated: Codex CLI (agents/ + prompts/)
+├── .gemini/                     # Generated: Gemini CLI (skills/)
 ├── .github/                     # Issue templates, spec-lint CI (GitHub-required at root)
-│   ├── ISSUE_TEMPLATE/
-│   └── workflows/
+├── pyproject.toml               # `argos` console script; dependencies = [] (stdlib-only runtime)
 ├── CLAUDE.md                    # Generated from argos/RULES.md (Claude Code reads this at root)
 ├── AGENTS.md                    # Generated from argos/RULES.md (Codex family convention)
 └── ARGOS.md                     # Methodology doc
 ```
 
-Edit `source/` and re-run `scripts/build.sh` to regenerate the per-harness directories. `argos/specs/` (PRD, ARCHITECTURE.md, STATE.md, tickets, decisions/ADRs) is the project's living spec — written by humans and the verifier, never by the coder.
+Edit `source/` and re-run `scripts/build.sh` to regenerate the per-harness directories. `argos/specs/` is the project's living spec — written by humans and the verifier, never by the coder. The orchestrator agent is defined in the CLI layer (`argos/specs/v1.0/agents/`) and ships in `.claude/agents/`.
 
 Why the split between `argos/` and root: `.claude/`, `.cursor/`, `.codex/`, `.gemini/`, `.github/`, `CLAUDE.md`, and `AGENTS.md` are hardcoded by their respective harnesses and must live at the repo root. Everything else Argos owns has been consolidated under `argos/` to keep the project root uncluttered.
 
-## Roadmap
+## Status
 
-- **v0.5 (current, shipped):** runtime files consolidated under `argos/`; `argos-migrate-v0.5.sh` available for v0.4 users; dogfooding on `kingl0w/jobhunter` in progress.
-- **v0.5 follow-ups** (queued in `argos/specs/tickets/` of this repo):
-  - ARG-001 — argos-status.sh exits non-zero when ADRs are present
-  - ARG-002 — Document self-hosting setup in README
-  - ARG-003 — Ship editor config for visual collapse of harness-required directories
-  - ARG-004 — Investigate relocatable config for Cursor / Codex / Gemini
-  - ARG-005 — Scan-report generator for retrofit onto existing codebases
-- **Future (v0.6+):** per-harness frontmatter tuning; in-tool validation for Cursor, Codex CLI, Gemini CLI; real-world hardening from continued dogfooding.
+Argos works **end to end**, and that has been validated by running it on a *separate* repo — not just on itself — through the full `init → queue → orchestrate → push → operator-merge` flow with no workarounds. The stdlib-only CLI, parallel worktree dispatch, escalation drain, and conservative finalization are all in use.
+
+It is a working system with a **named backlog**, not an unfinished one. Open *design* questions are tracked as tickets rather than left implicit — for example, the `STATE.md` authorship model (who may write which sections, and how the hook enforces it). Mechanical follow-ups (status edge cases, self-hosting docs, editor config for collapsing the harness directories, retrofit tooling for existing codebases) are likewise filed as tickets under `argos/specs/`.
 
 File a GitHub issue if you hit friction on any harness — the experimental ones in particular need real usage to mature.
