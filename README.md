@@ -96,7 +96,7 @@ The bare flow on **any repo** (no workarounds, this is the path validated end to
 
 ```bash
 # 1. Get argos (clone the template; install the CLI, or use `python3 -m argos.cli`).
-git clone https://github.com/<you>/argos.git
+git clone https://github.com/kingl0w/argos.git
 
 # 2. From inside the repo you want argos to work on:
 cd your-repo
