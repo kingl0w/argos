@@ -150,6 +150,17 @@ def test_parallelizable_with_is_symmetric():
         assert (b, A.parallelizableWith, a) in g, f"missing inverse for {a} <-> {b}"
 
 
+def test_ask_query_returns_bool_without_raising():
+    g = _graph()
+    result = query.run(g, """
+        PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+        ASK { ?t a argos:Ticket }
+    """)
+    assert result.type == "ASK"
+    assert isinstance(result.askAnswer, bool)
+    assert result.askAnswer is True
+
+
 def test_agent_pass_rate_query():
     g = _graph()
     rows = list(query.run_named(g, "agent-pass-rate"))

@@ -92,6 +92,13 @@ def main(argv=None) -> int:
 
 
 def _emit(g, result, as_json: bool) -> int:
+    # ASK / CONSTRUCT / DESCRIBE have no result.vars to iterate; guard by type.
+    if result.type == "ASK":
+        print(result.askAnswer)
+        return 0
+    if result.type in ("CONSTRUCT", "DESCRIBE"):
+        sys.stdout.write(result.serialize(format="turtle"))
+        return 0
     if as_json:
         print(json.dumps(query.to_node_link(g, result), indent=2))
     else:
