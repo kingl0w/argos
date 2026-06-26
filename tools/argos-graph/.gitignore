@@ -1,0 +1,7 @@
+.venv/
+*.ttl
+!ontology/*.ttl
+.pytest_cache/
+*.egg-info/
+__pycache__/
+*.pyc

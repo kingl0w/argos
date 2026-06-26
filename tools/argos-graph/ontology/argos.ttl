@@ -1,0 +1,234 @@
+@prefix argos: <https://github.com/kingl0w/argos/ns#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+#
+# Argos ontology — the vocabulary for projecting an argos spec repo into RDF.
+#
+# This file is hand-authored and is the canonical vocabulary. The build tool
+# (argos_graph/build.py) emits instance data in this namespace; it never edits
+# this file. Three source formats feed the graph, and the classes/properties
+# below are deliberately format-neutral so the same vocabulary describes a
+# ticket (markdown headers), an ADR (markdown), an escalation (YAML
+# frontmatter) and a STATE.md entry block (HTML-comment-delimited).
+#
+
+argos: a owl:Ontology ;
+    rdfs:label "Argos spec ontology" ;
+    rdfs:comment "Vocabulary for the read-only RDF projection of an argos spec tree (tickets, epics, ADRs, escalations, STATE.md sessions). Derived view; the markdown specs remain the source of truth." .
+
+########################################################################
+# Classes
+########################################################################
+
+argos:Ticket a rdfs:Class ;
+    rdfs:label "Ticket" ;
+    rdfs:comment "A unit of work. Source: argos/specs/**/tickets/{ID}.md (markdown headers)." .
+
+argos:Epic a rdfs:Class ;
+    rdfs:label "Epic" ;
+    rdfs:comment "A grouping of tickets. Synthesized from the **Epic:** N field on tickets — no epic files exist." .
+
+argos:ADR a rdfs:Class ;
+    rdfs:label "Architecture Decision Record" ;
+    rdfs:comment "A ratified decision. Source: argos/specs/**/decisions/ADR-NNN-*.md (markdown)." .
+
+argos:Escalation a rdfs:Class ;
+    rdfs:label "Escalation" ;
+    rdfs:comment "A blocking question raised during a ticket. Source: argos/specs/escalations/*.md (YAML frontmatter)." .
+
+argos:Session a rdfs:Class ;
+    rdfs:label "Session" ;
+    rdfs:comment "One agent work session recorded as a STATE.md <!-- argos:entry --> block." .
+
+argos:Agent a rdfs:Class ;
+    rdfs:label "Agent" ;
+    rdfs:comment "An actor in the argos loop (planner, coder, watchdog, verifier, orchestrator, backfill, …). Named by the author= attribute on a STATE entry or the raised_by field on an escalation." .
+
+argos:SourceFile a rdfs:Class ;
+    rdfs:label "Source file" ;
+    rdfs:comment "A repository file path referenced by a ticket's ## Touches section or a session's Files-changed list." .
+
+argos:Branch a rdfs:Class ;
+    rdfs:label "Branch" ;
+    rdfs:comment "A git branch named in a STATE entry (e.g. ticket/ARG1-030)." .
+
+argos:VerificationResult a rdfs:Class ;
+    rdfs:label "Verification result" ;
+    rdfs:comment "The outcome of a session: a decision plus critical/major/minor finding counts." .
+
+########################################################################
+# Object properties
+########################################################################
+
+argos:dependsOn a rdf:Property ;
+    rdfs:label "depends on" ;
+    rdfs:comment "Ticket -> Ticket. From the ## Depends on section; 'none' yields no edge." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:Ticket .
+
+argos:parallelizableWith a rdf:Property , owl:SymmetricProperty ;
+    rdfs:label "parallelizable with" ;
+    rdfs:comment "Ticket <-> Ticket. From the ## Parallelizable with section. Symmetric." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:Ticket .
+
+argos:partOfEpic a rdf:Property ;
+    rdfs:label "part of epic" ;
+    rdfs:comment "Ticket -> Epic. From the **Epic:** N field." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:Epic .
+
+argos:touches a rdf:Property ;
+    rdfs:label "touches" ;
+    rdfs:comment "Ticket -> SourceFile. From the ## Touches section." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:SourceFile .
+
+argos:governedBy a rdf:Property ;
+    rdfs:label "governed by" ;
+    rdfs:comment "Ticket -> ADR. Any ADR-NNN reference anywhere in the ticket body." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:ADR .
+
+argos:amends a rdf:Property ;
+    rdfs:label "amends" ;
+    rdfs:comment "Ticket -> Ticket. From a ## Amendment (ARGNNN) section: links the ticket to the amending ticket named in the header." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:Ticket .
+
+argos:blockedBy a rdf:Property ;
+    rdfs:label "blocked by" ;
+    rdfs:comment "Ticket -> Escalation. The ticket named by an escalation's ticket_id is blocked by that escalation." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:Escalation .
+
+argos:drainsInto a rdf:Property ;
+    rdfs:label "drains into" ;
+    rdfs:comment "Provenance/resolution flow. Structured use: ADR -> Escalation (the escalation an ADR resolves, named in its Context). Best-effort prose use: consecutive hops of a 'drained via X -> Y -> Z' chain (annotated argos:confidence \"prose-derived\")." .
+
+argos:implementedBy a rdf:Property ;
+    rdfs:label "implemented by" ;
+    rdfs:comment "Ticket -> Session. The session that implemented the ticket." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:Session .
+
+argos:verifiedBy a rdf:Property ;
+    rdfs:label "verified by" ;
+    rdfs:comment "Ticket -> Session. The session whose STATE entry records verification of the ticket." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range argos:Session .
+
+argos:authoredBy a rdf:Property ;
+    rdfs:label "authored by" ;
+    rdfs:comment "Session -> Agent. From the author= attribute on the STATE entry." ;
+    rdfs:domain argos:Session ;
+    rdfs:range argos:Agent .
+
+argos:producedBranch a rdf:Property ;
+    rdfs:label "produced branch" ;
+    rdfs:comment "Session -> Branch. The branch named in the STATE entry." ;
+    rdfs:domain argos:Session ;
+    rdfs:range argos:Branch .
+
+argos:hasResult a rdf:Property ;
+    rdfs:label "has result" ;
+    rdfs:comment "Session -> VerificationResult." ;
+    rdfs:domain argos:Session ;
+    rdfs:range argos:VerificationResult .
+
+argos:changedFile a rdf:Property ;
+    rdfs:label "changed file" ;
+    rdfs:comment "Session -> SourceFile. From the Files-changed list in the STATE entry body." ;
+    rdfs:domain argos:Session ;
+    rdfs:range argos:SourceFile .
+
+########################################################################
+# Datatype properties
+########################################################################
+
+argos:ticketId a rdf:Property ;
+    rdfs:label "ticket id" ;
+    rdfs:comment "Canonical id string, e.g. ARG1-030 or ADR-002." ;
+    rdfs:range xsd:string .
+
+argos:priority a rdf:Property ;
+    rdfs:label "priority" ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range xsd:string .
+
+argos:status a rdf:Property ;
+    rdfs:label "status" ;
+    rdfs:comment "Lifecycle status. Tickets: Queued/In progress/Done. ADRs: Accepted/Proposed/…" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( argos:Ticket argos:ADR ) ] ;
+    rdfs:range xsd:string .
+
+argos:decision a rdf:Property ;
+    rdfs:label "decision" ;
+    rdfs:comment "An outcome string. VerificationResult: pass/pass-with-minors/fail. ADR: the ratified option." ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( argos:VerificationResult argos:ADR ) ] ;
+    rdfs:range xsd:string .
+
+argos:createdDate a rdf:Property ;
+    rdfs:label "created date" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( argos:Ticket argos:ADR argos:Escalation ) ] ;
+    rdfs:range xsd:string .
+
+argos:severity a rdf:Property ;
+    rdfs:label "severity" ;
+    rdfs:comment "Escalation severity, e.g. blocking/advisory." ;
+    rdfs:domain argos:Escalation ;
+    rdfs:range xsd:string .
+
+argos:raisedBy a rdf:Property ;
+    rdfs:label "raised by" ;
+    rdfs:comment "The agent role string that raised an escalation (raised_by frontmatter field)." ;
+    rdfs:domain argos:Escalation ;
+    rdfs:range xsd:string .
+
+argos:intent a rdf:Property ;
+    rdfs:label "intent" ;
+    rdfs:comment "First paragraph of a ticket's ## Intent section." ;
+    rdfs:domain argos:Ticket ;
+    rdfs:range xsd:string .
+
+argos:criticalCount a rdf:Property ;
+    rdfs:label "critical count" ;
+    rdfs:domain argos:VerificationResult ;
+    rdfs:range xsd:integer .
+
+argos:majorCount a rdf:Property ;
+    rdfs:label "major count" ;
+    rdfs:domain argos:VerificationResult ;
+    rdfs:range xsd:integer .
+
+argos:minorCount a rdf:Property ;
+    rdfs:label "minor count" ;
+    rdfs:domain argos:VerificationResult ;
+    rdfs:range xsd:integer .
+
+argos:epicLabel a rdf:Property ;
+    rdfs:label "epic label" ;
+    rdfs:comment "Human label from the parenthetical of **Epic:** N (Label)." ;
+    rdfs:domain argos:Epic ;
+    rdfs:range xsd:string .
+
+argos:confidence a rdf:Property ;
+    rdfs:label "confidence" ;
+    rdfs:comment "Provenance qualifier on a reified statement. \"prose-derived\" marks edges recovered by regex from narrative prose, as opposed to structured edges (frontmatter / ## sections) which carry no confidence qualifier and are treated as full-confidence." ;
+    rdfs:range xsd:string .
+
+# Provenance datatype properties used on reified statements (rdf:Statement).
+argos:sourceFile a rdf:Property ;
+    rdfs:label "source file" ;
+    rdfs:comment "Repo-relative path of the file a statement was derived from." ;
+    rdfs:domain rdf:Statement ;
+    rdfs:range xsd:string .
+
+argos:sourceLine a rdf:Property ;
+    rdfs:label "source line" ;
+    rdfs:comment "1-based line number within the source file, where determinable." ;
+    rdfs:domain rdf:Statement ;
+    rdfs:range xsd:integer .

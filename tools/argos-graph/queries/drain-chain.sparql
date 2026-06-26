@@ -1,0 +1,11 @@
+# Reconstruct Ticket -> Escalation -> ADR -> Ticket provenance chains.
+# Flagship: surfaces ARG1-010 -> ARG1-057 -> ADR-002 -> ARG1-059, recovered from
+# "drained via ..." prose (the hops carry argos:confidence "prose-derived").
+PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+
+SELECT ?ticket ?escalation ?adr ?resolution WHERE {
+  ?ticket      a argos:Ticket ;      argos:drainsInto ?escalation .
+  ?escalation  a argos:Escalation ;  argos:drainsInto ?adr .
+  ?adr         a argos:ADR ;         argos:drainsInto ?resolution .
+  ?resolution  a argos:Ticket .
+}

@@ -1,0 +1,7 @@
+# Every dependsOn edge — the ticket DAG.
+PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+
+SELECT ?ticket ?dependsOn WHERE {
+  ?ticket argos:dependsOn ?dependsOn .
+}
+ORDER BY ?ticket ?dependsOn

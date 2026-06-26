@@ -1,0 +1,11 @@
+# Per-author session counts grouped by verification decision.
+PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+
+SELECT ?author ?decision (COUNT(?session) AS ?count) WHERE {
+  ?session a argos:Session ;
+           argos:authoredBy ?author ;
+           argos:hasResult  ?result .
+  ?result  argos:decision   ?decision .
+}
+GROUP BY ?author ?decision
+ORDER BY ?author ?decision
