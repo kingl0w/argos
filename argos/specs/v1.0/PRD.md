@@ -9,7 +9,7 @@ version: 1.0
 
 **Created:** 2026-04-26
 **Status:** Draft
-**Owner:** ianfrushon@gmail.com
+**Owner:** kingl0w
 
 ## One-line pitch
 

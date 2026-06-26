@@ -228,7 +228,7 @@ require_attend_before_merge = true   # if true, blocking escalations must be dra
 ```toml
 [operator]
 name = "ian"
-email = "ianfrushon@gmail.com"
+email = "kingl0w"
 
 [escalation]
 webhook_url = "https://hooks.example.com/argos"   # optional; empty/missing = no webhook
