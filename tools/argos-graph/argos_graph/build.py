@@ -9,10 +9,11 @@ where determinable) for provenance.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
-from rdflib import Graph, Literal, Namespace, BNode
+from rdflib import Graph, Literal, Namespace, BNode, URIRef
 from rdflib.namespace import RDF, RDFS, XSD
 
 from . import parse as _parse
@@ -215,3 +216,82 @@ def serialize(g: Graph, out_path: Path | None = None) -> str:
     if out_path:
         Path(out_path).write_text(ttl, encoding="utf-8")
     return ttl
+
+
+# ---------------------------------------------------------------------------
+# whole-graph export (node-link JSON) + self-contained HTML visualizer
+# ---------------------------------------------------------------------------
+
+_VIZ_TEMPLATE = Path(__file__).resolve().parent / "viz_template.html"
+_GRAPH_TOKEN = "__GRAPH_DATA__"
+
+
+def _local(term) -> str:
+    """Local name: 'ticket/ARG1-010' for data URIs, 'dependsOn' for ns URIs."""
+    s = str(term)
+    if "/data#" in s:
+        return unquote(s.split("/data#", 1)[1])
+    if "#" in s:
+        return s.rsplit("#", 1)[1]
+    return s
+
+
+def export_graph(g: Graph) -> dict:
+    """Walk the whole graph into {"nodes": [...], "edges": [...]}.
+
+    Nodes are the typed argos resources (deduped by id). Edges are the asserted
+    object-property triples between two nodes; an edge surfaces ``confidence``
+    when a reified statement annotates it (the prose-derived drain-chain hops).
+    """
+    # confidence per asserted triple, recovered from its reified statement.
+    conf: dict[tuple, str] = {}
+    for stmt in g.subjects(RDF.type, RDF.Statement):
+        c = g.value(stmt, A.confidence)
+        if c is None:
+            continue
+        s = g.value(stmt, RDF.subject)
+        p = g.value(stmt, RDF.predicate)
+        o = g.value(stmt, RDF.object)
+        if s is not None and p is not None and o is not None:
+            conf[(s, p, o)] = str(c)
+
+    nodes: dict[str, dict] = {}
+    for s, _, t in g.triples((None, RDF.type, None)):
+        if not str(t).startswith(str(A)):
+            continue  # skips rdf:Statement and any non-argos type
+        nid = _local(s)
+        if nid in nodes:
+            continue
+        label = g.value(s, RDFS.label)
+        nodes[nid] = {"id": nid, "label": str(label) if label else nid, "type": _local(t)}
+
+    edges: list[dict] = []
+    for s, p, o in g:
+        if not str(p).startswith(str(A)) or not isinstance(o, URIRef):
+            continue
+        sid, oid = _local(s), _local(o)
+        if sid not in nodes or oid not in nodes:
+            continue
+        edge = {"source": sid, "target": oid, "predicate": _local(p)}
+        c = conf.get((s, p, o))
+        if c:
+            edge["confidence"] = c
+        edges.append(edge)
+
+    return {"nodes": list(nodes.values()), "edges": edges}
+
+
+def render_html(data: dict, template_path: Path | None = None) -> str:
+    """Inline the export JSON into the single-file HTML template.
+
+    Escapes ``<`` as ``\\u003c`` so spec text containing a literal ``</script>``
+    can never close the inline script block early. ``\\u003c`` is valid JSON and
+    JS parses it back to ``<``.
+    """
+    template = (template_path or _VIZ_TEMPLATE).read_text(encoding="utf-8")
+    payload = json.dumps(data).replace("<", "\\u003c")
+    return template.replace(_GRAPH_TOKEN, payload, 1)
+
+
+def export_from_specs(specs_root: Path, repo_root: Path | None = None) -> dict:
+    return export_graph(build_from_specs(specs_root, repo_root))

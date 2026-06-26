@@ -21,3 +21,6 @@ argos-graph = "argos_graph.cli:main"
 
 [tool.setuptools]
 packages = ["argos_graph"]
+
+[tool.setuptools.package-data]
+argos_graph = ["viz_template.html"]

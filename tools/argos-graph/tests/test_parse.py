@@ -161,9 +161,67 @@ def test_ask_query_returns_bool_without_raising():
     assert result.askAnswer is True
 
 
+def test_effective_status_query():
+    # SYN-020 is declared "Queued" in its ticket file but has a passing session,
+    # so it must surface as an effective-status disagreement.
+    g = _graph()
+    rows = list(query.run_named(g, "effective-status"))
+    found = {(str(r[0]), str(r[1]) if r[1] is not None else None, str(r[2])) for r in rows}
+    assert ("SYN-020", "Queued", "pass") in found
+
+
 def test_agent_pass_rate_query():
     g = _graph()
     rows = list(query.run_named(g, "agent-pass-rate"))
     triples = {(query._short(r[0]), str(r[1]), int(r[2])) for r in rows}
     assert ("agent/verifier", "pass-with-minors", 1) in triples
     assert ("agent/coder", "pass", 1) in triples
+
+
+# --- export + viz ---------------------------------------------------------
+
+def test_export_shape_and_referential_integrity():
+    data = build.export_graph(_graph())
+    assert isinstance(data, dict)
+    assert isinstance(data["nodes"], list) and data["nodes"]
+    assert isinstance(data["edges"], list) and data["edges"]
+    ids = {n["id"] for n in data["nodes"]}
+    assert len(ids) == len(data["nodes"]), "node ids must be deduped"
+    for n in data["nodes"]:
+        assert n["type"] and n["label"]
+    for e in data["edges"]:
+        assert e["source"] in ids, f"dangling source {e['source']}"
+        assert e["target"] in ids, f"dangling target {e['target']}"
+        assert e["predicate"]
+
+
+def test_export_distinguishes_prose_from_structured_edges():
+    edges = build.export_graph(_graph())["edges"]
+    prose = [e for e in edges if e.get("confidence") == "prose-derived"]
+    structured = [e for e in edges if "confidence" not in e]
+    assert prose, "expected at least one prose-derived edge carrying confidence"
+    assert structured, "expected at least one structured edge with no confidence key"
+    # the synthetic drain hop SYN-010 -> escalation is prose-derived
+    assert any(e["source"] == "ticket/SYN-010" and e["predicate"] == "drainsInto"
+               for e in prose)
+
+
+def test_viz_writes_self_contained_html(tmp_path):
+    html = build.render_html(build.export_graph(_graph()))
+    out = tmp_path / "g.html"
+    out.write_text(html, encoding="utf-8")
+    body = out.read_text(encoding="utf-8")
+    assert body.strip()
+    assert "const GRAPH = " in body
+    assert "__GRAPH_DATA__" not in body, "placeholder must be replaced"
+    assert "d3.v7" in body or "d3@7" in body
+    assert '"nodes"' in body and '"edges"' in body
+
+
+def test_viz_escapes_angle_bracket_to_prevent_script_breakout():
+    # spec text containing </script> must never close the inline <script> block
+    data = {"nodes": [{"id": "ticket/X", "label": "PWN</script><b>", "type": "Ticket"}],
+            "edges": []}
+    html = build.render_html(data)
+    assert "PWN</script>" not in html, "raw </script> from data would break out"
+    assert "PWN\\u003c/script>" in html, "expected the escaped \\u003c form"

@@ -1,4 +1,4 @@
-"""argos-graph CLI:  build | query <name> | sparql <file> | queries
+"""argos-graph CLI:  build | query <name> | sparql <file> | queries | export | viz
 
 READ-ONLY against the spec tree. Default --specs resolves argos/specs/ relative
 to the repo root (three levels up from this file).
@@ -52,6 +52,14 @@ def main(argv=None) -> int:
 
     sub.add_parser("queries", help="list named queries")
 
+    pe = sub.add_parser("export", help="emit the whole graph as {nodes, edges} JSON")
+    pe.add_argument("--specs", type=Path, default=_default_specs())
+    pe.add_argument("--out", type=Path, help="write JSON here (default: stdout)")
+
+    pv = sub.add_parser("viz", help="emit a self-contained HTML graph visualizer")
+    pv.add_argument("--specs", type=Path, default=_default_specs())
+    pv.add_argument("--out", type=Path, default=Path("argos-graph.html"))
+
     args = p.parse_args(argv)
 
     if args.cmd == "build":
@@ -66,6 +74,25 @@ def main(argv=None) -> int:
     if args.cmd == "queries":
         for name in query.named_queries():
             print(name)
+        return 0
+
+    if args.cmd == "export":
+        g = _load_graph(args.specs, None)
+        data = build.export_graph(g)
+        text = json.dumps(data, indent=2)
+        if args.out:
+            args.out.write_text(text, encoding="utf-8")
+            print(f"wrote {len(data['nodes'])} nodes / {len(data['edges'])} edges to {args.out}",
+                  file=sys.stderr)
+        else:
+            print(text)
+        return 0
+
+    if args.cmd == "viz":
+        g = _load_graph(args.specs, None)
+        html = build.render_html(build.export_graph(g))
+        args.out.write_text(html, encoding="utf-8")
+        print(f"wrote {args.out} ({len(html)} bytes) — open in a browser", file=sys.stderr)
         return 0
 
     if args.cmd == "query":

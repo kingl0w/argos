@@ -73,3 +73,7 @@ Places the code and `argos/specs/ARCHITECTURE.md` disagree. Each entry should na
   - Decision: pass
 <!-- /argos:entry -->
 
+## Backlog
+
+- `tools/argos-graph/` — optional, read-only RDF projection of the specs into a knowledge graph (own `pyproject.toml` + rdflib; not part of the stdlib-only argos core). v1.1 items: `{nodes,edges}` JSON visualizer (pending); effective-status reconciliation query (landed).
+

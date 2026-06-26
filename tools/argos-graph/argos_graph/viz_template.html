@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>argos-graph — spec knowledge graph</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root {
+    --fg: #1d2330;
+    --muted: #6b7280;
+    --panel: rgba(255,255,255,0.86);
+    --border: #d7dbe3;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--fg);
+    background: transparent;            /* neutral / transparent canvas */
+  }
+  #app { position: fixed; inset: 0; }
+  svg { width: 100%; height: 100%; display: block; }
+
+  .panel {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  #controls { top: 14px; left: 14px; max-width: 230px; }
+  #legend   { bottom: 14px; left: 14px; }
+  h1 { font-size: 13px; margin: 0 0 8px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 11px; margin: 0 0 10px; }
+  label.row { display: flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .legend-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+  .edge-key { width: 26px; height: 0; border-top-width: 2px; border-top-style: solid; }
+  button {
+    font: inherit; cursor: pointer; margin-top: 10px; width: 100%;
+    padding: 6px 8px; border: 1px solid var(--border);
+    background: #fff; border-radius: 7px;
+  }
+  button:hover { background: #f3f4f6; }
+  button.active { background: #1d2330; color: #fff; border-color: #1d2330; }
+
+  .node circle { stroke: #fff; stroke-width: 1.5px; cursor: grab; }
+  .node text { font-size: 10px; fill: var(--fg); pointer-events: none;
+               paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+  .link { fill: none; }
+  .link.structured { stroke: #9aa3b2; stroke-width: 1.2px; }
+  .link.prose { stroke: #c026d3; stroke-width: 1.6px; stroke-dasharray: 5 4; }
+  .dim { opacity: 0.08; }
+  .hot circle { stroke: #1d2330; stroke-width: 3px; }
+  .hot.link { opacity: 1; stroke-width: 3px; }
+
+  #tip {
+    position: fixed; pointer-events: none; opacity: 0;
+    background: #1d2330; color: #fff; padding: 6px 9px; border-radius: 6px;
+    font-size: 12px; max-width: 320px; transition: opacity .08s; z-index: 10;
+  }
+  #tip .k { color: #9aa3b2; }
+</style>
+</head>
+<body>
+<div id="app"><svg></svg></div>
+
+<div id="controls" class="panel">
+  <h1>argos-graph</h1>
+  <p class="sub">spec knowledge graph · drag, scroll to zoom</p>
+  <div id="types"></div>
+  <button id="drain">Highlight drain chain</button>
+</div>
+
+<div id="legend" class="panel">
+  <div id="legend-types"></div>
+  <div style="height:8px"></div>
+  <div class="legend-row"><span class="edge-key" style="border-top-color:#9aa3b2"></span>structured (declared)</div>
+  <div class="legend-row"><span class="edge-key" style="border-top-color:#c026d3;border-top-style:dashed"></span>prose-derived (extracted, lower confidence)</div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const GRAPH = __GRAPH_DATA__;
+
+// fixed, legible palette — one color per class
+const PALETTE = {
+  Ticket: "#4e79a7",
+  Epic: "#f28e2b",
+  ADR: "#59a14f",
+  Escalation: "#e15759",
+  Session: "#b07aa1",
+  Agent: "#ff9da7",
+  VerificationResult: "#76b7b2",
+  SourceFile: "#9c755f",
+  Branch: "#bab0ac",
+};
+const ALWAYS_LABEL = new Set(["Ticket", "ADR", "Escalation", "Epic"]);
+// default view: the semantic core. SourceFile/Branch are off because their
+// touches/changedFile edges drown the graph; Agent/VerificationResult are
+// detail nodes, toggleable on demand.
+const DEFAULT_ON = new Set(["Ticket", "Epic", "ADR", "Escalation", "Session"]);
+
+// the flagship provenance chain to spotlight
+const DRAIN_IDS = ["ticket/ARG1-010", "adr/ADR-002", "ticket/ARG1-059"];
+const DRAIN_PREFIXES = ["escalation/ARG1-057"];
+const inDrain = id => DRAIN_IDS.includes(id) || DRAIN_PREFIXES.some(p => id.startsWith(p));
+
+const types = Array.from(new Set(GRAPH.nodes.map(n => n.type))).sort();
+const active = new Set(types.filter(t => DEFAULT_ON.has(t)));
+
+const nodeById = new Map(GRAPH.nodes.map(n => [n.id, n]));
+// rdflib gives source/target as ids; d3 will swap them to object refs in place
+const links = GRAPH.edges.map(e => Object.assign({}, e));
+
+const svg = d3.select("svg");
+const root = svg.append("g");
+const linkSel0 = root.append("g");
+const nodeSel0 = root.append("g");
+const tip = d3.select("#tip");
+
+const sim = d3.forceSimulation()
+  .force("link", d3.forceLink().id(d => d.id).distance(70).strength(0.5))
+  .force("charge", d3.forceManyBody().strength(-220))
+  .force("center", d3.forceCenter())
+  .force("collide", d3.forceCollide(16));
+
+let linkSel, nodeSel;
+
+function visible(n) { return active.has(n.type); }
+
+function render() {
+  const ns = GRAPH.nodes.filter(visible);
+  const vis = new Set(ns.map(n => n.id));
+  const ls = links.filter(l => {
+    const s = l.source.id || l.source, t = l.target.id || l.target;
+    return vis.has(s) && vis.has(t);
+  });
+
+  linkSel = linkSel0.selectAll("path").data(ls, d =>
+      (d.source.id||d.source)+">"+d.predicate+">"+(d.target.id||d.target))
+    .join("path")
+    .attr("class", d => "link " + (d.confidence ? "prose" : "structured"))
+    .on("mouseover", edgeOver).on("mousemove", move)
+    .on("mouseout", () => tip.style("opacity", 0));
+
+  nodeSel = nodeSel0.selectAll("g.node").data(ns, d => d.id)
+    .join(enter => {
+      const g = enter.append("g").attr("class", "node");
+      g.append("circle").attr("r", d => d.type === "Ticket" ? 8 : 7)
+        .attr("fill", d => PALETTE[d.type] || "#888");
+      g.append("text").attr("x", 11).attr("y", 4)
+        .text(d => ALWAYS_LABEL.has(d.type) ? d.label : "");
+      g.call(d3.drag()
+        .on("start", dragStart).on("drag", dragged).on("end", dragEnd));
+      g.on("mouseover", nodeOver).on("mousemove", move).on("mouseout", out);
+      return g;
+    });
+
+  sim.nodes(ns).on("tick", tick);
+  sim.force("link").links(ls);
+  sim.alpha(0.7).restart();
+}
+
+function tick() {
+  linkSel.attr("d", d => {
+    const s = d.source, t = d.target;
+    return `M${s.x},${s.y}L${t.x},${t.y}`;
+  });
+  nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
+}
+
+// hover -------------------------------------------------------------------
+function nodeOver(ev, d) {
+  d3.select(this).select("text").text(d.label);   // reveal label on hover
+  showTip(ev, `<span class="k">id</span> ${d.id}<br><span class="k">type</span> ${d.type}`);
+}
+function out(ev, d) {
+  if (!ALWAYS_LABEL.has(d.type)) d3.select(this).select("text").text("");
+  tip.style("opacity", 0);
+}
+function edgeOver(ev, d) {
+  const c = d.confidence ? `<br><span class="k">confidence</span> ${d.confidence}` : "";
+  showTip(ev, `<span class="k">${d.source.id} →</span><br><span class="k">predicate</span> ${d.predicate}${c}`);
+}
+function showTip(ev, html) {
+  tip.html(html).style("opacity", 1);
+  move(ev);
+}
+function move(ev) { tip.style("left", (ev.clientX + 14) + "px").style("top", (ev.clientY + 14) + "px"); }
+
+// drag --------------------------------------------------------------------
+function dragStart(ev, d) { if (!ev.active) sim.alphaTarget(0.2).restart(); d.fx = d.x; d.fy = d.y; }
+function dragged(ev, d) { d.fx = ev.x; d.fy = ev.y; }
+function dragEnd(ev, d) { if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }
+
+// zoom / pan --------------------------------------------------------------
+svg.call(d3.zoom().scaleExtent([0.2, 5]).on("zoom", ev => root.attr("transform", ev.transform)));
+
+// type filter -------------------------------------------------------------
+const typesBox = d3.select("#types");
+types.forEach(t => {
+  const row = typesBox.append("label").attr("class", "row");
+  row.append("input").attr("type", "checkbox").property("checked", active.has(t))
+    .on("change", function () { this.checked ? active.add(t) : active.delete(t); render(); });
+  row.append("span").attr("class", "swatch").style("background", PALETTE[t] || "#888");
+  row.append("span").text(t);
+});
+
+// legend (types) ----------------------------------------------------------
+const lt = d3.select("#legend-types");
+types.forEach(t => {
+  const row = lt.append("div").attr("class", "legend-row");
+  row.append("span").attr("class", "swatch").style("background", PALETTE[t] || "#888");
+  row.append("span").text(t);
+});
+
+// drain-chain highlight ---------------------------------------------------
+let hot = false;
+d3.select("#drain").on("click", function () {
+  hot = !hot;
+  d3.select(this).classed("active", hot);
+  if (!hot) {
+    nodeSel.classed("dim", false).classed("hot", false);
+    linkSel.classed("dim", false).classed("hot", false);
+    return;
+  }
+  nodeSel.classed("dim", d => !inDrain(d.id)).classed("hot", d => inDrain(d.id));
+  linkSel.classed("dim", d => !(inDrain(d.source.id) && inDrain(d.target.id)))
+         .classed("hot", d => inDrain(d.source.id) && inDrain(d.target.id));
+});
+
+render();
+</script>
+</body>
+</html>
