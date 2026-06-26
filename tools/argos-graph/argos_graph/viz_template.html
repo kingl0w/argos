@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>argos-graph — spec knowledge graph</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://unpkg.com/d3-dag@1.1.0"></script>
 <style>
   :root {
     --fg: #1d2330;
@@ -37,6 +38,12 @@
   .sub { color: var(--muted); font-size: 11px; margin: 0 0 10px; }
   .grp { font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
          color: var(--muted); margin: 10px 0 4px; }
+  .seg { display: flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .seg-btn { flex: 1; text-align: center; padding: 5px 0; cursor: pointer; font-size: 12px; }
+  .seg-btn input { display: none; }
+  .seg-btn.on { background: #1d2330; color: #fff; }
+  #notice { display: none; margin: 8px 0 0; padding: 7px 9px; border-radius: 7px;
+            background: #fff4e5; border: 1px solid #f0c089; color: #8a5a00; font-size: 11px; }
   label.row { display: flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer; }
   .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
   .legend-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
@@ -73,6 +80,12 @@
 <div id="controls" class="panel">
   <h1>argos-graph</h1>
   <p class="sub">spec knowledge graph · drag, scroll to zoom</p>
+  <div class="grp">Layout</div>
+  <div id="layout-mode" class="seg">
+    <label class="seg-btn on"><input type="radio" name="mode" value="force" checked> Force</label>
+    <label class="seg-btn"><input type="radio" name="mode" value="hierarchy"> Hierarchy</label>
+  </div>
+  <div id="notice"></div>
   <div class="grp">Node types</div>
   <div id="types"></div>
   <div class="grp">Edge types</div>
@@ -149,51 +162,159 @@ const sim = d3.forceSimulation()
   .force("center", d3.forceCenter())
   .force("collide", d3.forceCollide(16));
 
-let linkSel, nodeSel;
+let linkSel, nodeSel, mode = "force";
+const sid = l => l.source.id || l.source;
+const tid = l => l.target.id || l.target;
+
+// Only dependsOn — the one true ticket-to-ticket DAG — feeds the Sugiyama
+// layering. The other directed predicates (governedBy / drainsInto /
+// implementedBy / partOfEpic / …) don't share a single dependency direction
+// (escalations and tickets point INTO ADRs while implementedBy points OUT), so
+// layering them produces cycles through ADR/escalation nodes. They are still
+// DRAWN straight between computed positions in hierarchy mode, never layered.
+const LAYER_PREDICATE = "dependsOn";
 
 function render() {
-  // nodes allowed by type, then edges allowed by predicate + both endpoints,
-  // then drop orphan nodes that end up with no visible edge.
+  // full visible set per the type/edge filters, with orphan nodes dropped.
   const typeOk = new Set(GRAPH.nodes.filter(n => active.has(n.type)).map(n => n.id));
-  const ls = links.filter(l => {
-    const s = l.source.id || l.source, t = l.target.id || l.target;
-    return activeEdges.has(l.predicate) && typeOk.has(s) && typeOk.has(t);
-  });
+  const ls = links.filter(l => activeEdges.has(l.predicate) && typeOk.has(sid(l)) && typeOk.has(tid(l)));
   const connected = new Set();
-  ls.forEach(l => { connected.add(l.source.id || l.source); connected.add(l.target.id || l.target); });
+  ls.forEach(l => { connected.add(sid(l)); connected.add(tid(l)); });
   const ns = GRAPH.nodes.filter(n => typeOk.has(n.id) && connected.has(n.id));
 
-  linkSel = linkSel0.selectAll("path").data(ls, d =>
-      (d.source.id||d.source)+">"+d.predicate+">"+(d.target.id||d.target))
+  // Hierarchy lays out only the dependsOn-connected subset; on cycle / no-DAG /
+  // missing-lib it returns null (with a notice) and we render the full force view.
+  const H = (mode === "hierarchy") ? computeHierarchy(ns, ls) : (setNotice(""), null);
+  const drawNs = H ? ns.filter(n => H.ids.has(n.id)) : ns;
+  const drawLs = H ? ls.filter(l => H.ids.has(sid(l)) && H.ids.has(tid(l))) : ls;
+
+  linkSel = linkSel0.selectAll("path").data(drawLs, d => sid(d)+">"+d.predicate+">"+tid(d))
     .join("path")
     .attr("class", d => "link " + (d.confidence ? "prose" : "structured"))
     .on("mouseover", edgeOver).on("mousemove", move)
     .on("mouseout", () => tip.style("opacity", 0));
 
-  nodeSel = nodeSel0.selectAll("g.node").data(ns, d => d.id)
+  nodeSel = nodeSel0.selectAll("g.node").data(drawNs, d => d.id)
     .join(enter => {
       const g = enter.append("g").attr("class", "node");
       g.append("circle").attr("r", d => d.type === "Ticket" ? 8 : 7)
         .attr("fill", d => PALETTE[d.type] || "#888");
       g.append("text").attr("x", 11).attr("y", 4)
         .text(d => ALWAYS_LABEL.has(d.type) ? d.label : "");
-      g.call(d3.drag()
-        .on("start", dragStart).on("drag", dragged).on("end", dragEnd));
+      g.call(d3.drag().on("start", dragStart).on("drag", dragged).on("end", dragEnd));
       g.on("mouseover", nodeOver).on("mousemove", move).on("mouseout", out);
       return g;
     });
 
+  if (H) applyHierarchy(drawNs, H); else runForce(drawNs, drawLs);
+}
+
+function runForce(ns, ls) {
+  ns.forEach(n => { n.fx = null; n.fy = null; });   // release any hierarchy pins
   sim.nodes(ns).on("tick", tick);
   sim.force("link").links(ls);
   sim.alpha(0.7).restart();
 }
 
 function tick() {
-  linkSel.attr("d", d => {
-    const s = d.source, t = d.target;
-    return `M${s.x},${s.y}L${t.x},${t.y}`;
-  });
+  linkSel.attr("d", d => `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`);
   nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
+}
+
+function applyHierarchy(ns, H) {
+  sim.stop();
+  ns.forEach(n => { const p = H.pos.get(n.id); if (p) { n.x = p.x; n.y = p.y; n.fx = p.x; n.fy = p.y; } });
+  nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
+  const line = d3.line();
+  linkSel.attr("d", d => {
+    const routed = H.points.get(sid(d) + ">" + tid(d));
+    if (routed && routed.length > 1) return line(routed);                 // dependsOn: routed path
+    return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;    // other directed: straight
+  });
+}
+
+// ---- hierarchical (layered DAG) layout ----------------------------------
+// d3-dag v1: build with d3.graphStratify(), lay out with d3.sugiyama() (mutates
+// the dag in place). LAYERS dependsOn only. Returns {ids, pos, points} on
+// success, or null (after a notice) on missing-lib / cycle / empty, so render()
+// falls back to force.
+function computeHierarchy(ns, ls) {
+  if (typeof d3.graphStratify !== "function" || typeof d3.sugiyama !== "function") {
+    setNotice("d3-dag unavailable, showing force layout");
+    return null;
+  }
+  const byId = new Map(ns.map(n => [n.id, n]));
+  const depLs = ls.filter(l => l.predicate === LAYER_PREDICATE);
+
+  // cycle safety: a real spec bug. Surface it, don't crash — fall back to force.
+  const cycle = findCycle(ns, depLs);
+  if (cycle) {
+    const lbl = id => (byId.get(id) ? byId.get(id).label : id);
+    setNotice("Dependency cycle detected: " + cycle.map(lbl).join(" → ") + ", showing force layout");
+    return null;
+  }
+
+  // Layer only nodes that touch a dependsOn edge, so zero-dependsOn nodes (ADRs,
+  // escalations, epics, …) don't float as isolated single-node layers.
+  const ids = new Set();
+  depLs.forEach(l => { ids.add(sid(l)); ids.add(tid(l)); });
+  if (ids.size === 0) {
+    setNotice("No dependsOn edges in view, showing force layout");
+    return null;
+  }
+
+  // For a dependsOn edge s -> t, s is the parent of t; roots (nothing depends on
+  // them) land on the left and dependencies flow rightward.
+  const parents = new Map([...ids].map(id => [id, new Set()]));
+  depLs.forEach(l => parents.get(tid(l)).add(sid(l)));
+  const data = [...ids].map(id => ({ id, parentIds: [...parents.get(id)] }));
+
+  let dag;
+  try {
+    dag = d3.graphStratify()(data);
+    let layout = d3.sugiyama().nodeSize([36, 170]);
+    if (typeof d3.decrossTwoLayer === "function") layout = layout.decross(d3.decrossTwoLayer());
+    layout(dag);  // mutates dag in place
+  } catch (e) {
+    setNotice("Hierarchy layout failed (" + e.message + "), showing force layout");
+    return null;
+  }
+
+  // read positions back, swapping axes for left-to-right (layer depth -> x).
+  const pos = new Map();
+  for (const dn of dag.nodes()) pos.set(dn.data.id, { x: dn.y, y: dn.x });
+  const points = new Map();
+  for (const dl of dag.links()) {
+    points.set(dl.source.data.id + ">" + dl.target.data.id,
+               dl.points.map(p => Array.isArray(p) ? [p[1], p[0]] : [p.y, p.x]));
+  }
+  setNotice("");
+  return { ids, pos, points };
+}
+
+// directed-cycle detection over the DAG-edge subset; returns the cycle ids or null.
+function findCycle(ns, dagLs) {
+  const adj = new Map(ns.map(n => [n.id, []]));
+  dagLs.forEach(l => { if (adj.has(sid(l))) adj.get(sid(l)).push(tid(l)); });
+  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const color = new Map(ns.map(n => [n.id, WHITE]));
+  const stack = [];
+  let found = null;
+  function dfs(u) {
+    color.set(u, GRAY); stack.push(u);
+    for (const v of adj.get(u) || []) {
+      if (found) return;
+      if (color.get(v) === GRAY) { found = stack.slice(stack.indexOf(v)).concat(v); return; }
+      if (color.get(v) === WHITE) { dfs(v); if (found) return; }
+    }
+    color.set(u, BLACK); stack.pop();
+  }
+  for (const n of ns) { if (color.get(n.id) === WHITE) { dfs(n.id); if (found) break; } }
+  return found;
+}
+
+function setNotice(msg) {
+  d3.select("#notice").text(msg || "").style("display", msg ? "block" : "none");
 }
 
 // hover -------------------------------------------------------------------
@@ -216,9 +337,9 @@ function showTip(ev, html) {
 function move(ev) { tip.style("left", (ev.clientX + 14) + "px").style("top", (ev.clientY + 14) + "px"); }
 
 // drag --------------------------------------------------------------------
-function dragStart(ev, d) { if (!ev.active) sim.alphaTarget(0.2).restart(); d.fx = d.x; d.fy = d.y; }
-function dragged(ev, d) { d.fx = ev.x; d.fy = ev.y; }
-function dragEnd(ev, d) { if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }
+function dragStart(ev, d) { if (mode !== "force") return; if (!ev.active) sim.alphaTarget(0.2).restart(); d.fx = d.x; d.fy = d.y; }
+function dragged(ev, d) { if (mode !== "force") return; d.fx = ev.x; d.fy = ev.y; }
+function dragEnd(ev, d) { if (mode !== "force") return; if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }
 
 // zoom / pan --------------------------------------------------------------
 svg.call(d3.zoom().scaleExtent([0.2, 5]).on("zoom", ev => root.attr("transform", ev.transform)));
@@ -240,6 +361,18 @@ predicates.forEach(p => {
   row.append("input").attr("type", "checkbox").property("checked", activeEdges.has(p))
     .on("change", function () { this.checked ? activeEdges.add(p) : activeEdges.delete(p); render(); });
   row.append("span").text(p);
+});
+
+// layout-mode toggle ------------------------------------------------------
+function syncSeg() {
+  d3.selectAll("#layout-mode .seg-btn").classed("on", function () {
+    return this.querySelector("input").checked;
+  });
+}
+d3.selectAll('#layout-mode input[name="mode"]').on("change", function () {
+  mode = this.value;
+  syncSeg();
+  render();
 });
 
 // legend (types) ----------------------------------------------------------
