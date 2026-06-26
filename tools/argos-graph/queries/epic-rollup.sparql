@@ -1,0 +1,10 @@
+# Tickets per epic, broken down by ticket status.
+PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+
+SELECT ?epic ?epicLabel ?status (COUNT(?ticket) AS ?count) WHERE {
+  ?ticket argos:partOfEpic ?epic .
+  OPTIONAL { ?epic   argos:epicLabel ?epicLabel }
+  OPTIONAL { ?ticket argos:status    ?status }
+}
+GROUP BY ?epic ?epicLabel ?status
+ORDER BY ?epic ?status

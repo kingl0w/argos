@@ -1,0 +1,8 @@
+# Tickets blocked by an escalation, with the escalation's severity.
+PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+
+SELECT ?ticket ?escalation ?severity WHERE {
+  ?ticket argos:blockedBy ?escalation .
+  OPTIONAL { ?escalation argos:severity ?severity }
+}
+ORDER BY ?ticket
