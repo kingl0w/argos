@@ -166,22 +166,35 @@ let linkSel, nodeSel, mode = "force";
 const sid = l => l.source.id || l.source;
 const tid = l => l.target.id || l.target;
 
+// Only dependsOn — the one true ticket-to-ticket DAG — feeds the Sugiyama
+// layering. The other directed predicates (governedBy / drainsInto /
+// implementedBy / partOfEpic / …) don't share a single dependency direction
+// (escalations and tickets point INTO ADRs while implementedBy points OUT), so
+// layering them produces cycles through ADR/escalation nodes. They are still
+// DRAWN straight between computed positions in hierarchy mode, never layered.
+const LAYER_PREDICATE = "dependsOn";
+
 function render() {
-  // nodes allowed by type, then edges allowed by predicate + both endpoints,
-  // then drop orphan nodes that end up with no visible edge.
+  // full visible set per the type/edge filters, with orphan nodes dropped.
   const typeOk = new Set(GRAPH.nodes.filter(n => active.has(n.type)).map(n => n.id));
   const ls = links.filter(l => activeEdges.has(l.predicate) && typeOk.has(sid(l)) && typeOk.has(tid(l)));
   const connected = new Set();
   ls.forEach(l => { connected.add(sid(l)); connected.add(tid(l)); });
   const ns = GRAPH.nodes.filter(n => typeOk.has(n.id) && connected.has(n.id));
 
-  linkSel = linkSel0.selectAll("path").data(ls, d => sid(d)+">"+d.predicate+">"+tid(d))
+  // Hierarchy lays out only the dependsOn-connected subset; on cycle / no-DAG /
+  // missing-lib it returns null (with a notice) and we render the full force view.
+  const H = (mode === "hierarchy") ? computeHierarchy(ns, ls) : (setNotice(""), null);
+  const drawNs = H ? ns.filter(n => H.ids.has(n.id)) : ns;
+  const drawLs = H ? ls.filter(l => H.ids.has(sid(l)) && H.ids.has(tid(l))) : ls;
+
+  linkSel = linkSel0.selectAll("path").data(drawLs, d => sid(d)+">"+d.predicate+">"+tid(d))
     .join("path")
     .attr("class", d => "link " + (d.confidence ? "prose" : "structured"))
     .on("mouseover", edgeOver).on("mousemove", move)
     .on("mouseout", () => tip.style("opacity", 0));
 
-  nodeSel = nodeSel0.selectAll("g.node").data(ns, d => d.id)
+  nodeSel = nodeSel0.selectAll("g.node").data(drawNs, d => d.id)
     .join(enter => {
       const g = enter.append("g").attr("class", "node");
       g.append("circle").attr("r", d => d.type === "Ticket" ? 8 : 7)
@@ -193,10 +206,7 @@ function render() {
       return g;
     });
 
-  // hierarchy is an alternative; on cycle / lib-missing it returns false and we
-  // fall through to force, so a layout always renders.
-  if (mode === "hierarchy" && layoutHierarchy(ns, ls)) return;
-  runForce(ns, ls);
+  if (H) applyHierarchy(drawNs, H); else runForce(drawNs, drawLs);
 }
 
 function runForce(ns, ls) {
@@ -211,34 +221,53 @@ function tick() {
   nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
 }
 
+function applyHierarchy(ns, H) {
+  sim.stop();
+  ns.forEach(n => { const p = H.pos.get(n.id); if (p) { n.x = p.x; n.y = p.y; n.fx = p.x; n.fy = p.y; } });
+  nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
+  const line = d3.line();
+  linkSel.attr("d", d => {
+    const routed = H.points.get(sid(d) + ">" + tid(d));
+    if (routed && routed.length > 1) return line(routed);                 // dependsOn: routed path
+    return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;    // other directed: straight
+  });
+}
+
 // ---- hierarchical (layered DAG) layout ----------------------------------
 // d3-dag v1: build with d3.graphStratify(), lay out with d3.sugiyama() (mutates
-// the dag in place). Lays out a DAG SUBSET only (directed acyclic predicates);
-// symmetric/undirected edges (parallelizableWith) are excluded from layering.
-// Other visible edges draw straight between the computed positions.
-const DAG_EDGES = new Set(["dependsOn", "governedBy", "drainsInto", "implementedBy", "partOfEpic"]);
-
-function layoutHierarchy(ns, ls) {
+// the dag in place). LAYERS dependsOn only. Returns {ids, pos, points} on
+// success, or null (after a notice) on missing-lib / cycle / empty, so render()
+// falls back to force.
+function computeHierarchy(ns, ls) {
   if (typeof d3.graphStratify !== "function" || typeof d3.sugiyama !== "function") {
     setNotice("d3-dag unavailable, showing force layout");
-    return false;
+    return null;
   }
   const byId = new Map(ns.map(n => [n.id, n]));
-  const dagLs = ls.filter(l => DAG_EDGES.has(l.predicate));
+  const depLs = ls.filter(l => l.predicate === LAYER_PREDICATE);
 
   // cycle safety: a real spec bug. Surface it, don't crash — fall back to force.
-  const cycle = findCycle(ns, dagLs);
+  const cycle = findCycle(ns, depLs);
   if (cycle) {
     const lbl = id => (byId.get(id) ? byId.get(id).label : id);
     setNotice("Dependency cycle detected: " + cycle.map(lbl).join(" → ") + ", showing force layout");
-    return false;
+    return null;
   }
 
-  // For a directed edge s -> t, s is the parent of t. Roots (no parents) are the
-  // nodes nothing points to ("nothing depends on them") and land on the left.
-  const parents = new Map(ns.map(n => [n.id, new Set()]));
-  dagLs.forEach(l => parents.get(tid(l)).add(sid(l)));
-  const data = ns.map(n => ({ id: n.id, parentIds: Array.from(parents.get(n.id)) }));
+  // Layer only nodes that touch a dependsOn edge, so zero-dependsOn nodes (ADRs,
+  // escalations, epics, …) don't float as isolated single-node layers.
+  const ids = new Set();
+  depLs.forEach(l => { ids.add(sid(l)); ids.add(tid(l)); });
+  if (ids.size === 0) {
+    setNotice("No dependsOn edges in view, showing force layout");
+    return null;
+  }
+
+  // For a dependsOn edge s -> t, s is the parent of t; roots (nothing depends on
+  // them) land on the left and dependencies flow rightward.
+  const parents = new Map([...ids].map(id => [id, new Set()]));
+  depLs.forEach(l => parents.get(tid(l)).add(sid(l)));
+  const data = [...ids].map(id => ({ id, parentIds: [...parents.get(id)] }));
 
   let dag;
   try {
@@ -248,30 +277,19 @@ function layoutHierarchy(ns, ls) {
     layout(dag);  // mutates dag in place
   } catch (e) {
     setNotice("Hierarchy layout failed (" + e.message + "), showing force layout");
-    return false;
+    return null;
   }
 
-  sim.stop();
   // read positions back, swapping axes for left-to-right (layer depth -> x).
-  for (const dn of dag.nodes()) {
-    const n = byId.get(dn.data.id);
-    if (n) { n.x = dn.y; n.y = dn.x; n.fx = n.x; n.fy = n.y; }
-  }
-  const pts = new Map();
+  const pos = new Map();
+  for (const dn of dag.nodes()) pos.set(dn.data.id, { x: dn.y, y: dn.x });
+  const points = new Map();
   for (const dl of dag.links()) {
-    pts.set(dl.source.data.id + ">" + dl.target.data.id,
-            dl.points.map(p => Array.isArray(p) ? [p[1], p[0]] : [p.y, p.x]));
+    points.set(dl.source.data.id + ">" + dl.target.data.id,
+               dl.points.map(p => Array.isArray(p) ? [p[1], p[0]] : [p.y, p.x]));
   }
-  nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
-  const line = d3.line();
-  linkSel.attr("d", d => {
-    const routed = pts.get(sid(d) + ">" + tid(d));
-    if (routed && routed.length > 1) return line(routed);   // DAG edge: routed path
-    const s = byId.get(sid(d)) || d.source, t = byId.get(tid(d)) || d.target;
-    return `M${s.x},${s.y}L${t.x},${t.y}`;                   // other edge: straight
-  });
   setNotice("");
-  return true;
+  return { ids, pos, points };
 }
 
 // directed-cycle detection over the DAG-edge subset; returns the cycle ids or null.

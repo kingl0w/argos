@@ -229,6 +229,8 @@ def test_viz_has_dag_layout_mode_controls():
     # v1 API in use (not the older dagStratify)
     assert "d3.graphStratify(" in html and "d3.sugiyama(" in html
     assert "dagStratify" not in html
+    # layering is dependsOn-only (other directed edges must not feed Sugiyama)
+    assert 'LAYER_PREDICATE = "dependsOn"' in html
     # cycle-safety path exists
     assert "Dependency cycle detected" in html
     # NOTE: findCycle / sugiyama are pure-JS in the template and not reachable
