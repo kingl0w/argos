@@ -107,3 +107,83 @@ emitted.
 Tests run against a **synthetic** fixture spec tree under `tests/fixtures/` (one
 ticket per edge type incl. a drain chain), not argos's real specs (which would be
 brittle).
+
+## What this demonstrates
+
+`argos-graph` is a read-only RDF projection of an argos spec tree. The markdown
+specs stay the source of truth; this tool parses them into a knowledge graph
+(`rdflib` + SPARQL) that answers questions the markdown cannot answer by eye.
+Three commands make the case.
+
+### 1. Causal provenance reconstructed across artifact types
+
+```
+argos-graph query drain-chain
+```
+
+```
+ticket           escalation                                adr          resolution
+ticket/ARG1-010  escalation/ARG1-057-2026-04-29T19-30-00Z  adr/ADR-002  ticket/ARG1-059
+```
+
+ARG1-010 used `import yaml`, violating the stdlib-only decision ADR-001. That
+violation was escalated (ARG1-057, blocking), the escalation drained into a new
+decision (ADR-002), and that decision was implemented by ARG1-059. The full
+chain spans four artifact types in three different file formats, and part of it
+is encoded only in prose. The parser extracts structured edges authoritatively
+and treats prose-derived edges as a secondary pass, marking them
+`argos:confidence "prose-derived"` with `sourceFile` and `sourceLine`. Declared
+edges and extracted edges stay distinguishable, which is the honest way to build
+a graph from semi-structured text.
+
+### 2. Reconciling two sources that disagree
+
+```
+argos-graph query effective-status
+```
+
+Ticket files carry a `**Status:**` field that, in this repo, still reads
+`Queued` for work that has long since shipped. The real done-ness signal lives
+elsewhere, in the verification record attached to each session. This query
+reaches past the stale field and reports the disagreement: tickets whose file
+says `Queued` (or omits status entirely) while a verification result records a
+`pass`. The blank-status rows are the sharpest, the markdown says nothing and
+the graph still knows the work is done. A graph earns its keep when it can
+reconcile sources that contradict each other.
+
+### 3. The vocabulary
+
+```
+sed -n '1,40p' ontology/argos.ttl
+```
+
+`ontology/argos.ttl` is hand-authored and is the canonical vocabulary; the build
+tool emits instance data in its namespace and never edits it. Classes and
+properties are format-neutral so one vocabulary describes a ticket (markdown
+headers), an ADR (markdown), an escalation (YAML frontmatter), and a STATE.md
+session (HTML-comment-delimited block). Properties carry `rdfs:domain`,
+`rdfs:range`, and labels; `parallelizableWith` is an `owl:SymmetricProperty`
+whose inverse is materialized at build time so queries read correctly without a
+reasoner.
+
+### It is an open graph, not a fixed report
+
+The five named queries are conveniences. The graph answers arbitrary SPARQL:
+
+```
+echo 'PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+SELECT ?t ?adr WHERE { ?t argos:governedBy ?adr } ORDER BY ?t' > /tmp/gov.sparql
+argos-graph sparql /tmp/gov.sparql
+```
+
+This one surfaces which ADRs govern which tickets, and the answer shows the
+ratification boundary as data: tickets created before ADR-002 answer only to
+ADR-001, tickets after answer to both.
+
+### Boundaries
+
+This tool is optional and isolated. It has its own `pyproject.toml` with
+`rdflib`, never imports the `argos` package, and never writes to
+`argos/specs/`. The argos core stays standard-library-only (ADR-001); this
+projection lives at arm's length and serves humans and analysis, never argos's
+runtime.
