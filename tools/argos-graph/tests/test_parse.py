@@ -218,6 +218,23 @@ def test_viz_writes_self_contained_html(tmp_path):
     assert '"nodes"' in body and '"edges"' in body
 
 
+def test_viz_has_dag_layout_mode_controls():
+    html = build.render_html(build.export_graph(_graph()))
+    # d3-dag v1 CDN tag present alongside d3 v7
+    assert "https://unpkg.com/d3-dag@1.1.0" in html
+    assert "d3@7" in html
+    # layout-mode control with both modes, force default
+    assert 'id="layout-mode"' in html
+    assert 'value="force"' in html and 'value="hierarchy"' in html
+    # v1 API in use (not the older dagStratify)
+    assert "d3.graphStratify(" in html and "d3.sugiyama(" in html
+    assert "dagStratify" not in html
+    # cycle-safety path exists
+    assert "Dependency cycle detected" in html
+    # NOTE: findCycle / sugiyama are pure-JS in the template and not reachable
+    # from Python; the cycle fallback is exercised in-browser, not asserted here.
+
+
 def test_viz_escapes_angle_bracket_to_prevent_script_breakout():
     # spec text containing </script> must never close the inline <script> block
     data = {"nodes": [{"id": "ticket/X", "label": "PWN</script><b>", "type": "Ticket"}],
