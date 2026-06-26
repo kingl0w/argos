@@ -84,7 +84,12 @@ def build_graph(parsed: dict) -> Graph:
         for dep in t["depends_on"]:
             _rel_edge(g, node, A.dependsOn, _u("ticket", dep), t["source_file"], t["depends_line"])
         for par in t["parallelizable_with"]:
-            _rel_edge(g, node, A.parallelizableWith, _u("ticket", par), t["source_file"], t["parallel_line"])
+            par_node = _u("ticket", par)
+            _rel_edge(g, node, A.parallelizableWith, par_node, t["source_file"], t["parallel_line"])
+            # parallelizableWith is symmetric: materialize the inverse so plain
+            # SPARQL sees both directions (no reasoner at read time). RDF is a
+            # set, so reciprocal declarations dedup naturally.
+            g.add((par_node, A.parallelizableWith, node))
         for f in t["touches"]:
             _rel_edge(g, node, A.touches, _sourcefile(g, f), t["source_file"], t["touches_line"])
         for adr in t["adr_refs"]:

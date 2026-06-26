@@ -142,6 +142,14 @@ def test_dependency_dag_query():
     assert ("ticket/SYN-020", "ticket/SYN-010") in pairs
 
 
+def test_parallelizable_with_is_symmetric():
+    g = _graph()
+    pairs = list(g.subject_objects(A.parallelizableWith))
+    assert pairs, "expected at least one parallelizableWith edge"
+    for a, b in pairs:
+        assert (b, A.parallelizableWith, a) in g, f"missing inverse for {a} <-> {b}"
+
+
 def test_agent_pass_rate_query():
     g = _graph()
     rows = list(query.run_named(g, "agent-pass-rate"))
