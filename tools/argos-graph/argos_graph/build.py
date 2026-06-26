@@ -282,9 +282,15 @@ def export_graph(g: Graph) -> dict:
 
 
 def render_html(data: dict, template_path: Path | None = None) -> str:
-    """Inline the export JSON into the single-file HTML template."""
+    """Inline the export JSON into the single-file HTML template.
+
+    Escapes ``<`` as ``\\u003c`` so spec text containing a literal ``</script>``
+    can never close the inline script block early. ``\\u003c`` is valid JSON and
+    JS parses it back to ``<``.
+    """
     template = (template_path or _VIZ_TEMPLATE).read_text(encoding="utf-8")
-    return template.replace(_GRAPH_TOKEN, json.dumps(data), 1)
+    payload = json.dumps(data).replace("<", "\\u003c")
+    return template.replace(_GRAPH_TOKEN, payload, 1)
 
 
 def export_from_specs(specs_root: Path, repo_root: Path | None = None) -> dict:

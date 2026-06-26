@@ -216,3 +216,12 @@ def test_viz_writes_self_contained_html(tmp_path):
     assert "__GRAPH_DATA__" not in body, "placeholder must be replaced"
     assert "d3.v7" in body or "d3@7" in body
     assert '"nodes"' in body and '"edges"' in body
+
+
+def test_viz_escapes_angle_bracket_to_prevent_script_breakout():
+    # spec text containing </script> must never close the inline <script> block
+    data = {"nodes": [{"id": "ticket/X", "label": "PWN</script><b>", "type": "Ticket"}],
+            "edges": []}
+    html = build.render_html(data)
+    assert "PWN</script>" not in html, "raw </script> from data would break out"
+    assert "PWN\\u003c/script>" in html, "expected the escaped \\u003c form"
