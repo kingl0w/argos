@@ -1,0 +1,18 @@
+# Reconciles two disagreeing sources: ticket-file Status vs verification record.
+# A ticket is effectively done when a verifiedBy Session has a VerificationResult
+# whose decision is pass or pass-with-minors, regardless of what the ticket file
+# still declares under **Status:**. (decision lives on the VerificationResult
+# reached via hasResult, not on the Session directly — see ontology/argos.ttl.)
+PREFIX argos: <https://github.com/kingl0w/argos/ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?ticket ?declared ?decision WHERE {
+  ?t a argos:Ticket ;
+     rdfs:label ?ticket ;
+     argos:verifiedBy ?s .
+  ?s argos:hasResult ?r .
+  ?r argos:decision ?decision .
+  OPTIONAL { ?t argos:status ?declared . }
+  FILTER(?decision IN ("pass", "pass-with-minors"))
+}
+ORDER BY ?ticket

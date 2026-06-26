@@ -161,6 +161,15 @@ def test_ask_query_returns_bool_without_raising():
     assert result.askAnswer is True
 
 
+def test_effective_status_query():
+    # SYN-020 is declared "Queued" in its ticket file but has a passing session,
+    # so it must surface as an effective-status disagreement.
+    g = _graph()
+    rows = list(query.run_named(g, "effective-status"))
+    found = {(str(r[0]), str(r[1]) if r[1] is not None else None, str(r[2])) for r in rows}
+    assert ("SYN-020", "Queued", "pass") in found
+
+
 def test_agent_pass_rate_query():
     g = _graph()
     rows = list(query.run_named(g, "agent-pass-rate"))
