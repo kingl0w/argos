@@ -31,10 +31,12 @@
     backdrop-filter: blur(4px);
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
-  #controls { top: 14px; left: 14px; max-width: 230px; }
+  #controls { top: 14px; left: 14px; width: 220px; max-height: calc(100vh - 28px); overflow-y: auto; }
   #legend   { bottom: 14px; left: 14px; }
   h1 { font-size: 13px; margin: 0 0 8px; letter-spacing: .02em; }
   .sub { color: var(--muted); font-size: 11px; margin: 0 0 10px; }
+  .grp { font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+         color: var(--muted); margin: 10px 0 4px; }
   label.row { display: flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer; }
   .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
   .legend-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
@@ -71,7 +73,10 @@
 <div id="controls" class="panel">
   <h1>argos-graph</h1>
   <p class="sub">spec knowledge graph · drag, scroll to zoom</p>
+  <div class="grp">Node types</div>
   <div id="types"></div>
+  <div class="grp">Edge types</div>
+  <div id="edges"></div>
   <button id="drain">Highlight drain chain</button>
 </div>
 
@@ -100,10 +105,14 @@ const PALETTE = {
   Branch: "#bab0ac",
 };
 const ALWAYS_LABEL = new Set(["Ticket", "ADR", "Escalation", "Epic"]);
-// default view: the semantic core. SourceFile/Branch are off because their
-// touches/changedFile edges drown the graph; Agent/VerificationResult are
-// detail nodes, toggleable on demand.
-const DEFAULT_ON = new Set(["Ticket", "Epic", "ADR", "Escalation", "Session"]);
+// default view: the semantic core. Session/Agent/VerificationResult and
+// SourceFile/Branch are detail/noise nodes, toggleable on demand.
+const DEFAULT_ON = new Set(["Ticket", "Epic", "ADR", "Escalation"]);
+// edge predicates off by default: parallelizableWith and touches dominate the
+// graph by volume. Everything else (incl. the prose-derived drainsInto chain) on.
+const EDGE_OFF = new Set(["parallelizableWith", "touches"]);
+// predicates drawn as undirected — materialized both directions, dedupe to one line.
+const SYMMETRIC = new Set(["parallelizableWith"]);
 
 // the flagship provenance chain to spotlight
 const DRAIN_IDS = ["ticket/ARG1-010", "adr/ADR-002", "ticket/ARG1-059"];
@@ -113,9 +122,20 @@ const inDrain = id => DRAIN_IDS.includes(id) || DRAIN_PREFIXES.some(p => id.star
 const types = Array.from(new Set(GRAPH.nodes.map(n => n.type))).sort();
 const active = new Set(types.filter(t => DEFAULT_ON.has(t)));
 
-const nodeById = new Map(GRAPH.nodes.map(n => [n.id, n]));
-// rdflib gives source/target as ids; d3 will swap them to object refs in place
-const links = GRAPH.edges.map(e => Object.assign({}, e));
+const predicates = Array.from(new Set(GRAPH.edges.map(e => e.predicate))).sort();
+const activeEdges = new Set(predicates.filter(p => !EDGE_OFF.has(p)));
+
+// build link list, collapsing each symmetric pair to a single undirected edge.
+const links = [];
+const seenSym = new Set();
+for (const e of GRAPH.edges) {
+  if (SYMMETRIC.has(e.predicate)) {
+    const key = e.predicate + "|" + [e.source, e.target].sort().join("~");
+    if (seenSym.has(key)) continue;
+    seenSym.add(key);
+  }
+  links.push(Object.assign({}, e));
+}
 
 const svg = d3.select("svg");
 const root = svg.append("g");
@@ -131,15 +151,17 @@ const sim = d3.forceSimulation()
 
 let linkSel, nodeSel;
 
-function visible(n) { return active.has(n.type); }
-
 function render() {
-  const ns = GRAPH.nodes.filter(visible);
-  const vis = new Set(ns.map(n => n.id));
+  // nodes allowed by type, then edges allowed by predicate + both endpoints,
+  // then drop orphan nodes that end up with no visible edge.
+  const typeOk = new Set(GRAPH.nodes.filter(n => active.has(n.type)).map(n => n.id));
   const ls = links.filter(l => {
     const s = l.source.id || l.source, t = l.target.id || l.target;
-    return vis.has(s) && vis.has(t);
+    return activeEdges.has(l.predicate) && typeOk.has(s) && typeOk.has(t);
   });
+  const connected = new Set();
+  ls.forEach(l => { connected.add(l.source.id || l.source); connected.add(l.target.id || l.target); });
+  const ns = GRAPH.nodes.filter(n => typeOk.has(n.id) && connected.has(n.id));
 
   linkSel = linkSel0.selectAll("path").data(ls, d =>
       (d.source.id||d.source)+">"+d.predicate+">"+(d.target.id||d.target))
@@ -209,6 +231,15 @@ types.forEach(t => {
     .on("change", function () { this.checked ? active.add(t) : active.delete(t); render(); });
   row.append("span").attr("class", "swatch").style("background", PALETTE[t] || "#888");
   row.append("span").text(t);
+});
+
+// edge-type filter --------------------------------------------------------
+const edgesBox = d3.select("#edges");
+predicates.forEach(p => {
+  const row = edgesBox.append("label").attr("class", "row");
+  row.append("input").attr("type", "checkbox").property("checked", activeEdges.has(p))
+    .on("change", function () { this.checked ? activeEdges.add(p) : activeEdges.delete(p); render(); });
+  row.append("span").text(p);
 });
 
 // legend (types) ----------------------------------------------------------
