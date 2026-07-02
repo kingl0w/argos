@@ -1,7 +1,7 @@
 # Argos — State
 
-**Last updated:** 2026-04-26
-**Updated by:** _verifier (automated) or human (on hotfix)_
+**Last updated:** 2026-07-01
+**Updated by:** human (hotfix batch — repo-consistency fixes, see Done this cycle)
 
 This file is the project's short-term memory. Every subagent reads it first. Only the verifier writes it during the loop; humans write it on out-of-loop edits.
 
@@ -44,6 +44,34 @@ Tickets completed since the last cycle close. Cleared when you close a cycle (we
   - Decision: pass
 <!-- /argos:entry -->
 
+<!-- argos:entry id=2026-06-14T00:33:20Z-ARG1-003 ticket=ARG1-003 author=verifier session=local-arg1-003 -->
+- **[2026-06-13] ARG1-003 — verified** (session local-arg1-003, worktree `.argos/worktrees/ARG1-003-c5f1c8c/`)
+  - Implemented `argos status` integrity oracle: `argos/cli/integrity.py` (four checks: state_md, config, escalations, git_alignment) + `argos/cli/commands/status.py` (`--json`, `--repo-root`), wired into `argos/cli/__main__.py` (status no longer a stub).
+  - Tests: `argos/cli/tests/test_status.py` (20 cases incl. all 6 ACs); retargeted obsolete `status` stub guard in `argos/cli/tests/test_version.py` to `attend`.
+  - AC harness: all 6 ACs verified live (clean init→exit 0; unclosed block→STATE.md+`unclosed entry`; malformed escalation names path; undrained blocking→`undrained escalation`; `--json` 4 keys pass/fail + matching exit; `time` user+sys=0.041s < 2.0). Full suite 361 pass; lint-imports clean (stdlib-only, ADR-001).
+  - Findings: 0 critical, 0 major, 0 minor
+  - Decision: pass
+  - _Relocated 2026-07-01: this block was originally appended under `## Known drift`._
+<!-- /argos:entry -->
+
+<!-- argos:entry id=2026-06-14T00:41:22Z-ARG1-005 ticket=ARG1-005 author=verifier session=autonomous-2026-06-13 -->
+**[2026-06-13] ARG1-005 — verified** (autonomous session, worktree `ARG1-005-c5f1c8c`)
+  - Implements `argos attend`: drains `argos/specs/escalations/`, presents each pending escalation oldest-first, records the operator's decision in the ticket's `## Decisions` section, removes the file. `--list` shows pending without prompting; `--ticket` filters by `ticket_id`. Drained files (carrying `## Resolution`) and the `README.md` sentinel are skipped.
+  - Files added: `argos/cli/commands/attend.py`, `argos/cli/tests/test_attend.py`. Edited: `argos/cli/__main__.py` (route `attend`, drop from stub map).
+  - Tests: `python3 -m unittest argos.cli.tests.test_attend` → 20 pass; full suite 361 pass. `lint-imports` clean (stdlib only, ADR-001).
+  - AC harness: all 6 acceptance criteria run and quoted (AC#1 against the live repo, AC#2-#6 in sandbox fixtures); 0 critical / 0 major / 0 minor.
+  - Decision: pass
+  - _Relocated 2026-07-01: this block was originally appended under `## Known drift`._
+<!-- /argos:entry -->
+
+- **[2026-07-01] Repo-consistency hotfix batch** (human, out-of-loop; no ticket — explicit one-off per RULES §off-ticket work)
+  - CI: spec-lint code filter fixed (previously exempted all of `argos/`, i.e. the entire CLI); added jobs running the unit test suite, `argos lint-imports`, `argos status`, and a build-drift check (`scripts/build.sh && git diff --exit-code`).
+  - Build drift healed: newer `.claude/agents/{coder,planner,verifier}.md` back-ported into `source/agents/` (canonical again); `orchestrator.md` added to `source/agents/` and now builds into all four harness dirs; README updated.
+  - Specs made self-consistent: real `argos/specs/ARCHITECTURE.md` written (was template-only); queue tickets ARG-001…ARG-005 backfilled as files under `argos/specs/tickets/`; stale ADR-001 drift entry closed; v1.0 STATE queue reconciled (ARG1-003/004/005 shipped).
+  - `argos status` extended: `state_md` check now also verifies every `## Queue` entry resolves to a ticket file (+2 tests in `test_status.py`).
+  - Packaging: `[tool.setuptools.package-data]` added to make `argos/cli/templates/` inclusion explicit (verified `pip install` + `argos init` in a clean venv works both before and after — the fix guards against setuptools `include-package-data` default changes, not a live breakage).
+  - Deleted dead `argos/cli/escalation-validate` shim (dispatcher subcommand landed with ARG1-001); removed a stale zero-byte `argos/specs/v1.0/STATE.md.lock` (already gitignored).
+
 ## Open decisions
 
 Product or architecture calls that are pending and block one or more queued tickets. Each becomes an ADR once decided.
@@ -54,24 +82,7 @@ Product or architecture calls that are pending and block one or more queued tick
 
 Places the code and `argos/specs/ARCHITECTURE.md` disagree. Each entry should name the file or module, one sentence on the mismatch, and a disposition (fix code, update docs, file ADR).
 
-- `argos/cli/escalation_validator.py` ships in Python without an executed ADR — provisional pending ADR-001 (cross-CLI language decision). Disposition: file ADR-001 (cross-CLI language); if non-Python is chosen, port the validator as part of the ADR's migration step.
-<!-- argos:entry id=2026-06-14T00:33:20Z-ARG1-003 ticket=ARG1-003 author=verifier session=local-arg1-003 -->
-- **[2026-06-13] ARG1-003 — verified** (session local-arg1-003, worktree `.argos/worktrees/ARG1-003-c5f1c8c/`)
-  - Implemented `argos status` integrity oracle: `argos/cli/integrity.py` (four checks: state_md, config, escalations, git_alignment) + `argos/cli/commands/status.py` (`--json`, `--repo-root`), wired into `argos/cli/__main__.py` (status no longer a stub).
-  - Tests: `argos/cli/tests/test_status.py` (20 cases incl. all 6 ACs); retargeted obsolete `status` stub guard in `argos/cli/tests/test_version.py` to `attend`.
-  - AC harness: all 6 ACs verified live (clean init→exit 0; unclosed block→STATE.md+`unclosed entry`; malformed escalation names path; undrained blocking→`undrained escalation`; `--json` 4 keys pass/fail + matching exit; `time` user+sys=0.041s < 2.0). Full suite 361 pass; lint-imports clean (stdlib-only, ADR-001).
-  - Findings: 0 critical, 0 major, 0 minor
-  - Decision: pass
-<!-- /argos:entry -->
-
-<!-- argos:entry id=2026-06-14T00:41:22Z-ARG1-005 ticket=ARG1-005 author=verifier session=autonomous-2026-06-13 -->
-**[2026-06-13] ARG1-005 — verified** (autonomous session, worktree `ARG1-005-c5f1c8c`)
-  - Implements `argos attend`: drains `argos/specs/escalations/`, presents each pending escalation oldest-first, records the operator's decision in the ticket's `## Decisions` section, removes the file. `--list` shows pending without prompting; `--ticket` filters by `ticket_id`. Drained files (carrying `## Resolution`) and the `README.md` sentinel are skipped.
-  - Files added: `argos/cli/commands/attend.py`, `argos/cli/tests/test_attend.py`. Edited: `argos/cli/__main__.py` (route `attend`, drop from stub map).
-  - Tests: `python3 -m unittest argos.cli.tests.test_attend` → 20 pass; full suite 361 pass. `lint-imports` clean (stdlib only, ADR-001).
-  - AC harness: all 6 acceptance criteria run and quoted (AC#1 against the live repo, AC#2-#6 in sandbox fixtures); 0 critical / 0 major / 0 minor.
-  - Decision: pass
-<!-- /argos:entry -->
+- _none_ (2026-07-01: the `escalation_validator.py` provisional-language entry closed — ADR-001 is Accepted on Python; the ARG1-003 / ARG1-005 verification blocks that had been appended here were relocated to `## Done this cycle` where they belong.)
 
 ## Backlog
 

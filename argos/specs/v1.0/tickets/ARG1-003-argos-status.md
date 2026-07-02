@@ -1,6 +1,6 @@
 # ARG1-003 — `argos status` integrity oracle
 
-**Status:** Queued
+**Status:** Done (verified 2026-06-13, merged `23959c1`; status field corrected 2026-07-01 — it had been left at Queued)
 **Created:** 2026-04-26
 **Priority:** P0
 **Epic:** 1 (CLI installer)

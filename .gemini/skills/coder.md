@@ -21,3 +21,12 @@ Frontend tickets: if touching .tsx/.jsx/.vue/.svelte/.html/.css AND Impeccable i
 Append to ticket when done: ## Implementation notes with commits, tests run, unexpected findings, follow-ups.
 
 Never update STATE.md (outer loop's job). Never close the ticket (verifier's call).
+
+## Commit format
+
+Subject line: `ARG1-NNN: <imperative summary>` (the ticket id, then a concise description).
+Optional body: bullet points describing what changed and why.
+
+Do NOT add any trailers. Specifically: no `Co-Authored-By:` line, no `Generated-with:` line, no `Signed-off-by:` unless the operator explicitly requests it. The commit message ends with the body; nothing after.
+
+One commit per logical group, as stated above.

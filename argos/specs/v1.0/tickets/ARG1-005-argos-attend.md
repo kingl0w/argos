@@ -1,6 +1,6 @@
 # ARG1-005 — `argos attend` drains the escalation queue
 
-**Status:** Queued
+**Status:** Done (verified 2026-06-13, merged `e8cc1e4`; status field corrected 2026-07-01 — it had been left at Queued)
 **Created:** 2026-04-26
 **Priority:** P0
 **Epic:** 1 (CLI installer)

@@ -5,6 +5,39 @@ on:
     branches: [main, master]
 
 jobs:
+  tests:
+    name: Unit tests + import lint + integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run unit test suite
+        run: python3 -m unittest discover -s argos/cli/tests -t . -v
+
+      - name: Stdlib import allowlist
+        run: python3 -m argos.cli lint-imports argos/
+
+      - name: Spec integrity oracle
+        run: python3 -m argos.cli status
+
+  build-drift:
+    name: Generated harness outputs match source/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild and diff
+        run: |
+          bash scripts/build.sh
+          if ! git diff --exit-code; then
+            echo "::error::Generated outputs are stale. Edit source/ (or argos/RULES.md) and run scripts/build.sh; never edit .claude/, .cursor/, .codex/, .gemini/, CLAUDE.md, or AGENTS.md directly."
+            exit 1
+          fi
+
   state-md-sync:
     name: STATE.md must move with code
     runs-on: ubuntu-latest
@@ -31,15 +64,17 @@ jobs:
           echo "$changed" | sed 's/^/  /'
           echo
 
-          # Files we consider "code" — anything outside argos/, .github/, and docs.
-          code_changed=$(echo "$changed" | grep -Ev '^(argos/|\.github/|docs/|README\.md$|ARGOS\.md$|CLAUDE\.md$|AGENTS\.md$|LICENSE$|\.gitignore$)' || true)
+          # Code is what the CLI and its scripts are made of. A positive
+          # match beats the old exclusion list, which exempted all of
+          # argos/ — including argos/cli/, i.e. the entire CLI.
+          code_changed=$(echo "$changed" | grep -E '^(argos/cli/|argos/scripts/|scripts/|pyproject\.toml$)' || true)
 
           if [ -z "$code_changed" ]; then
             echo "No code files changed (spec/docs-only PR). Passing."
             exit 0
           fi
 
-          state_changed=$(echo "$changed" | grep -x 'argos/specs/STATE.md' || true)
+          state_changed=$(echo "$changed" | grep -E '^argos/specs/(v[0-9.]+/)?STATE\.md$' || true)
 
           if [ -z "$state_changed" ]; then
             echo "::error::Argos requires living spec in sync with code. Update argos/specs/STATE.md."
@@ -47,7 +82,7 @@ jobs:
             echo "Code files changed:"
             echo "$code_changed" | sed 's/^/  /'
             echo
-            echo "But argos/specs/STATE.md was not updated in this PR."
+            echo "But no STATE.md was updated in this PR."
             echo "Move the ticket to 'Done this cycle', record any drift, and commit STATE.md."
             exit 1
           fi

@@ -10,7 +10,8 @@ consistent."* This module holds the four checks; the CLI shim at
 The four checks (the exact key set surfaced by ``--json``):
 
 1. ``state_md`` — ``argos/specs/STATE.md`` parses against the v1.0 block
-   schema (``state_parser``) and every block's ``ticket`` resolves to a
+   schema (``state_parser``), every block's ``ticket`` resolves to a
+   ticket file on disk, and every ``## Queue`` entry resolves to a
    ticket file on disk.
 2. ``config`` — ``argos/config.toml`` exists and, together with
    ``.argos/local.toml``, parses and type-validates against the config
@@ -36,6 +37,7 @@ from pathlib import Path
 
 from argos.cli import config as config_mod
 from argos.cli import escalation_validator
+from argos.cli import queue as queue_mod
 from argos.cli import state_parser
 
 __all__ = [
@@ -178,6 +180,20 @@ def check_state_md(repo_root: Path) -> CheckResult:
                 f"STATE.md: block id={block.id!r} references ticket "
                 f"{block.ticket} but no ticket file was found under "
                 f"argos/specs/tickets/"
+            )
+
+    # Queue entries are plain bullets, not annotated blocks, so the block
+    # pass above never sees them. A queue pointing at a ticket file that
+    # does not exist is exactly the drift this oracle is for.
+    try:
+        queued = queue_mod.parse_queue(state_path.read_text(encoding="utf-8"))
+    except (queue_mod.QueueSectionMissingError, OSError):
+        queued = []
+    for ticket_id in queued:
+        if not _ticket_exists(repo_root, ticket_id):
+            messages.append(
+                f"STATE.md: '## Queue' lists {ticket_id} but no ticket "
+                f"file was found under argos/specs/tickets/"
             )
     return CheckResult("state_md", not messages, messages)
 

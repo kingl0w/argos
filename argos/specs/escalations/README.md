@@ -23,6 +23,6 @@ the optional webhook in ARG1-041) are tracked as separate tickets; this
 directory exists ahead of both so the schema contract can be committed and
 validated in isolation.
 
-The `escalation-validate` shim at `argos/cli/escalation-validate` is
-provisional — the unified `argos` CLI dispatcher (ARG1-001) will absorb it
-into an `argos escalation-validate <path>` subcommand and remove the shim.
+Validation is an `argos escalation-validate <path>` subcommand of the
+unified CLI dispatcher (ARG1-001). The provisional shell shim that predated
+the dispatcher (`argos/cli/escalation-validate`) was removed 2026-07-01.

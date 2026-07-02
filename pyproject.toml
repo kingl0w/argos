@@ -42,3 +42,9 @@ Homepage = "https://github.com/kingl0w/argos"
 where = ["."]
 include = ["argos*"]
 exclude = ["argos.specs*", "argos.scripts*"]
+
+[tool.setuptools.package-data]
+# init.py resolves templates relative to the installed package
+# (argos/cli/templates/). Declared explicitly so wheels keep shipping them
+# even if setuptools' include-package-data default changes.
+"argos.cli" = ["templates/*.template"]

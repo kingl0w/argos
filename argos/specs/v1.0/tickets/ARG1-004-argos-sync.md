@@ -1,6 +1,6 @@
 # ARG1-004 — `argos sync` reconciles tickets, issues, STATE, and worktrees
 
-**Status:** Queued
+**Status:** Done (verified 2026-06-13, merged `954dab8`; status field corrected 2026-07-01 — it had been left at Queued)
 **Created:** 2026-04-26
 **Priority:** P1
 **Epic:** 1 (CLI installer)

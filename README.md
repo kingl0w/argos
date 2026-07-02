@@ -217,7 +217,7 @@ your-project/
 └── ARGOS.md                     # Methodology doc
 ```
 
-Edit `source/` and run `scripts/build.sh` again to regenerate the per harness directories. `argos/specs/` is the project's living spec, written by humans and the verifier, never by the coder. The orchestrator agent is defined in the CLI layer (`argos/specs/v1.0/agents/`) and ships in `.claude/agents/`.
+Edit `source/` and run `scripts/build.sh` again to regenerate the per harness directories. `argos/specs/` is the project's living spec, written by humans and the verifier, never by the coder. All five agents (including the orchestrator, specified in the CLI layer under `argos/specs/v1.0/agents/`) build from `source/agents/` into every harness directory.
 
 Why the split between `argos/` and root: `.claude/`, `.cursor/`, `.codex/`, `.gemini/`, `.github/`, `CLAUDE.md`, and `AGENTS.md` are hardcoded by their respective harnesses and must live at the repo root. Everything else Argos owns is consolidated under `argos/` to keep the project root uncluttered.
 

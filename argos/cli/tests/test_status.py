@@ -183,6 +183,32 @@ class IntegrityUnitTests(unittest.TestCase):
             self.assertFalse(sm.passed)
             self.assertIn("ARG1-050", " ".join(sm.messages))
 
+    def test_queued_ticket_without_file_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = _make_repo(
+                Path(td),
+                state=_STATE_VALID.replace("- _none_", "- ARG1-777 — phantom (P2)", 1),
+            )
+            report = integrity.run_checks(root)
+            sm = report.by_name()["state_md"]
+            self.assertFalse(sm.passed)
+            joined = " ".join(sm.messages)
+            self.assertIn("Queue", joined)
+            self.assertIn("ARG1-777", joined)
+
+    def test_queued_ticket_with_file_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = _make_repo(
+                Path(td),
+                state=_STATE_VALID.replace("- _none_", "- ARG1-777 — real (P2)", 1),
+            )
+            _write(
+                root / "argos" / "specs" / "tickets" / "ARG1-777-real.md",
+                "# ARG1-777\n",
+            )
+            report = integrity.run_checks(root)
+            self.assertTrue(report.by_name()["state_md"].passed)
+
     def test_ticket_found_in_v1_fallback_dir(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
