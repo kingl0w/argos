@@ -211,9 +211,15 @@ function render() {
 
 function runForce(ns, ls) {
   ns.forEach(n => { n.fx = null; n.fy = null; });   // release any hierarchy pins
-  sim.nodes(ns).on("tick", tick);
+  sim.nodes(ns).on("tick", tick).on("end", () => { if (!userMoved) fitView(); });
   sim.force("link").links(ls);
   sim.alpha(0.7).restart();
+  // the simulation spreads out from the origin — center it in the viewport
+  // right away, then fitView() reframes precisely once it settles.
+  if (!userMoved) {
+    const w = svg.node().clientWidth, h = svg.node().clientHeight;
+    svg.call(zoom.transform, d3.zoomIdentity.translate(PANEL_W + (w - PANEL_W) / 2, h / 2));
+  }
 }
 
 function tick() {
@@ -231,6 +237,7 @@ function applyHierarchy(ns, H) {
     if (routed && routed.length > 1) return line(routed);                 // dependsOn: routed path
     return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;    // other directed: straight
   });
+  if (!userMoved) fitView();
 }
 
 // ---- hierarchical (layered DAG) layout ----------------------------------
@@ -342,7 +349,30 @@ function dragged(ev, d) { if (mode !== "force") return; d.fx = ev.x; d.fy = ev.y
 function dragEnd(ev, d) { if (mode !== "force") return; if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }
 
 // zoom / pan --------------------------------------------------------------
-svg.call(d3.zoom().scaleExtent([0.2, 5]).on("zoom", ev => root.attr("transform", ev.transform)));
+let userMoved = false;   // once the user pans/zooms, auto-fit stops repositioning
+const zoom = d3.zoom().scaleExtent([0.2, 5]).on("zoom", ev => {
+  if (ev.sourceEvent) userMoved = true;
+  root.attr("transform", ev.transform);
+});
+svg.call(zoom);
+
+// fit the drawn nodes into the viewport right of the control panel
+const PANEL_W = 250;
+function fitView(animate = true) {
+  const ns = nodeSel ? nodeSel.data() : [];
+  if (!ns.length || ns.some(n => n.x == null)) return;
+  const xs = ns.map(n => n.x), ys = ns.map(n => n.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const w = svg.node().clientWidth, h = svg.node().clientHeight, pad = 60;
+  const k = Math.max(0.2, Math.min((w - PANEL_W - 2 * pad) / Math.max(1, x1 - x0),
+                                   (h - 2 * pad) / Math.max(1, y1 - y0), 1.5));
+  const t = d3.zoomIdentity
+    .translate(PANEL_W + (w - PANEL_W) / 2 - k * (x0 + x1) / 2,
+               h / 2 - k * (y0 + y1) / 2)
+    .scale(k);
+  (animate ? svg.transition().duration(400) : svg).call(zoom.transform, t);
+}
 
 // type filter -------------------------------------------------------------
 const typesBox = d3.select("#types");
