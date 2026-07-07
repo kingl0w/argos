@@ -7,7 +7,7 @@
 <meta name="description" content="Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #1d2330;
@@ -21,55 +21,55 @@
     --adr: #59a14f;
     --escalation: #e15759;
     --session: #b07aa1;
+    --term-bg: #1d2330;
+    --term-fg: #e6e9f0;
   }
   * { box-sizing: border-box; margin: 0; }
   html { scroll-behavior: smooth; }
   body {
     background: var(--paper);
     color: var(--ink);
-    font: 16px/1.65 "Spline Sans Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font: 16px/1.65 "Roboto", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  .serif { font-family: "Fraunces", Georgia, serif; }
+  .mono { font-family: "Roboto Mono", ui-monospace, monospace; }
 
-  .wrap { max-width: 880px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 48px); }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 clamp(16px, 5vw, 48px); }
 
-  /* ruled top strip — the five agent colors */
   .rule { display: flex; height: 5px; }
   .rule span { flex: 1; }
 
   header {
-    display: flex; justify-content: space-between; align-items: baseline;
-    padding: 28px 0 0;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 24px 0 0;
   }
-  .wordmark { font-size: 15px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; }
-  .wordmark b { color: var(--ticket); font-weight: 500; }
-  header a { color: var(--muted); font-size: 13px; text-decoration: none; border-bottom: 1px solid var(--border); }
+  .wordmark { font-size: 15px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+  .wordmark b { color: var(--ticket); }
+  header a { color: var(--muted); font-size: 13px; text-decoration: none; border-bottom: 1px solid var(--border); white-space: nowrap; }
   header a:hover { color: var(--ink); border-color: var(--ink); }
 
-  .hero { padding: clamp(56px, 10vh, 110px) 0 0; }
+  .hero { padding: clamp(48px, 9vh, 100px) 0 0; }
   .hero h1 {
-    font-family: "Fraunces", Georgia, serif;
-    font-weight: 400;
-    font-size: clamp(34px, 6vw, 58px);
-    line-height: 1.12;
-    letter-spacing: -0.01em;
-    max-width: 15ch;
+    font-weight: 700;
+    font-size: clamp(30px, 5.5vw, 52px);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    max-width: 17ch;
   }
-  .hero h1 em { font-style: italic; color: var(--ticket); }
+  .hero h1 em { font-style: normal; color: var(--ticket); }
   .hero .pitch {
-    margin-top: 28px;
-    max-width: 58ch;
-    font-size: 15px;
+    margin-top: 24px;
+    max-width: 62ch;
+    font-size: 16px;
     color: var(--ink-soft);
   }
   .hero .pitch b { font-weight: 500; color: var(--ink); }
 
-  .ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 40px; }
+  .ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 36px; }
   .btn {
-    display: inline-block; text-decoration: none;
-    font: 500 14px/1 "Spline Sans Mono", monospace;
-    padding: 15px 26px; border-radius: 2px;
+    display: inline-block; text-decoration: none; text-align: center;
+    font: 500 14px/1 "Roboto", sans-serif;
+    padding: 15px 26px; border-radius: 3px;
     transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s cubic-bezier(.22,1,.36,1);
   }
   .btn:hover { transform: translateY(-2px); }
@@ -78,51 +78,130 @@
   .btn.ghost { color: var(--ink); border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--border); }
   .btn.ghost:hover { box-shadow: 5px 5px 0 var(--border); }
 
-  .loop { margin: clamp(64px, 12vh, 120px) 0 0; }
+  section { margin-top: clamp(56px, 11vh, 110px); }
   .kicker {
     font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted);
     display: flex; align-items: center; gap: 14px;
   }
   .kicker::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-  .diagram {
-    margin-top: 22px; background: var(--panel); border: 1px solid var(--border);
-    padding: clamp(16px, 3vw, 34px); overflow-x: auto;
-  }
-  .diagram pre {
-    font: 12.5px/1.5 "Spline Sans Mono", ui-monospace, monospace;
-    color: var(--ink-soft); min-width: 640px;
-  }
-  .diagram .a { color: var(--ticket); font-weight: 500; }
-  .diagram .warn { color: var(--escalation); }
-  .diagram .ok { color: var(--adr); }
-  .diagram .dim { color: var(--muted); }
+  .section-note { margin-top: 14px; font-size: 14px; color: var(--ink-soft); max-width: 64ch; }
 
-  .tenets { margin: clamp(64px, 12vh, 120px) 0 0; }
-  .tenets ol { list-style: none; counter-reset: tenet; margin-top: 8px; }
+  /* terminal demo */
+  .term {
+    margin-top: 22px; background: var(--term-bg); border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(29,35,48,.18);
+    overflow: hidden;
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; background: #2a3242;
+  }
+  .term-bar .dot { width: 11px; height: 11px; border-radius: 50%; background: #4a5468; }
+  .term-bar .title { margin-left: auto; margin-right: auto; font: 12px "Roboto Mono", monospace; color: #9aa3b2; }
+  .term-bar button {
+    font: 12px "Roboto Mono", monospace; color: #9aa3b2; background: none;
+    border: 1px solid #4a5468; border-radius: 4px; padding: 3px 10px; cursor: pointer;
+  }
+  .term-bar button:hover { color: #fff; border-color: #9aa3b2; }
+  .term-body {
+    padding: 18px 18px 22px; min-height: 340px;
+    font: 13px/1.7 "Roboto Mono", ui-monospace, monospace;
+    color: var(--term-fg); white-space: pre-wrap; word-break: break-word;
+  }
+  .term-body .p { color: #7ea0c4; }      /* prompt */
+  .term-body .c { color: #fff; }         /* command */
+  .term-body .ok { color: #8fce9a; }
+  .term-body .cursor {
+    display: inline-block; width: 8px; height: 15px; vertical-align: -2px;
+    background: var(--term-fg); animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* loop diagram — html/css, no ascii */
+  .flow { margin-top: 22px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: clamp(20px, 4vw, 36px); }
+  .flow-step { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .fbox {
+    border: 1.5px solid var(--ink); border-radius: 4px; background: var(--paper);
+    padding: 10px 18px; font: 500 14px "Roboto Mono", monospace;
+  }
+  .fbox small { display: block; font: 400 11px/1.5 "Roboto", sans-serif; color: var(--muted); max-width: 34ch; }
+  .fbox.specs { border-style: dashed; border-color: var(--muted); color: var(--ink-soft); }
+  .fdown { display: flex; flex-direction: column; align-items: center; color: var(--muted); padding: 2px 0; }
+  .fdown .lbl { font: 11px "Roboto Mono", monospace; padding: 1px 0; }
+  .fdown::before, .fdown::after { content: ""; width: 1.5px; height: 12px; background: var(--muted); }
+  .fdown::after { clip-path: none; }
+  .fdown .head { width: 0; height: 0; border: 5px solid transparent; border-top-color: var(--muted); margin-top: -1px; }
+  .pipeline { display: flex; align-items: stretch; justify-content: center; gap: 0; margin-top: 2px; flex-wrap: nowrap; }
+  .agent {
+    flex: 1; max-width: 150px; border: 1.5px solid var(--ticket); border-radius: 4px;
+    background: var(--paper); padding: 12px 8px; text-align: center;
+    font: 500 14px "Roboto Mono", monospace; color: var(--ticket);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fright { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); padding: 0 2px; min-width: 52px; }
+  .fright .lbl { font: 11px "Roboto Mono", monospace; }
+  .fright .line { display: flex; align-items: center; width: 100%; }
+  .fright .line::before { content: ""; flex: 1; height: 1.5px; background: var(--muted); }
+  .fright .head { width: 0; height: 0; border: 5px solid transparent; border-left-color: var(--muted); }
+  .outcomes { margin-top: 26px; display: grid; gap: 10px; }
+  .outcome { display: flex; gap: 12px; align-items: baseline; font-size: 14px; color: var(--ink-soft); }
+  .outcome .tag {
+    flex: none; font: 500 11px "Roboto Mono", monospace; padding: 3px 8px; border-radius: 3px;
+    color: #fff; min-width: 118px; text-align: center;
+  }
+  .outcome .tag.pass { background: var(--adr); }
+  .outcome .tag.block { background: var(--escalation); }
+  .outcome .tag.steer { background: var(--epic); }
+  .outcome code { font-family: "Roboto Mono", monospace; font-size: 13px; background: #eef0f4; padding: 1px 5px; border-radius: 2px; }
+
+  /* quickstart */
+  .quick {
+    margin-top: 22px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: clamp(16px, 3vw, 28px); overflow-x: auto;
+  }
+  .quick pre { font: 13px/1.9 "Roboto Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .quick .cmd { color: var(--ink); font-weight: 500; }
+  .quick .cmt { color: var(--muted); }
+
+  /* tenets */
+  .tenets ol { list-style: none; counter-reset: tenet; margin-top: 8px; padding: 0; }
   .tenets li {
     counter-increment: tenet;
-    display: grid; grid-template-columns: 64px 1fr; gap: 18px;
-    padding: 26px 0; border-bottom: 1px solid var(--border);
+    display: grid; grid-template-columns: 56px 1fr; gap: 16px;
+    padding: 24px 0; border-bottom: 1px solid var(--border);
   }
   .tenets li::before {
     content: counter(tenet, decimal-leading-zero);
-    font-family: "Fraunces", Georgia, serif; font-size: 26px; color: var(--border);
+    font: 700 24px "Roboto", sans-serif; color: var(--border);
   }
-  .tenets h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; }
-  .tenets p { margin-top: 6px; font-size: 14px; color: var(--ink-soft); max-width: 62ch; }
-  .tenets code {
-    font-family: inherit; font-size: 13px; background: #eef0f4;
-    padding: 1px 5px; border-radius: 2px;
-  }
+  .tenets h2 { font-weight: 700; font-size: 18px; }
+  .tenets p { margin-top: 6px; font-size: 14px; color: var(--ink-soft); max-width: 64ch; }
+  .tenets code { font-family: "Roboto Mono", monospace; font-size: 13px; background: #eef0f4; padding: 1px 5px; border-radius: 2px; }
 
   footer {
-    margin-top: clamp(64px, 12vh, 120px); padding: 26px 0 40px;
+    margin-top: clamp(56px, 11vh, 110px); padding: 24px 0 40px;
     border-top: 1px solid var(--border);
     display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
     font-size: 13px; color: var(--muted);
   }
   footer a { color: var(--muted); }
   footer a:hover { color: var(--ink); }
+
+  @media (max-width: 640px) {
+    .ctas { flex-direction: column; }
+    .btn { width: 100%; }
+    .pipeline { flex-direction: column; align-items: center; }
+    .agent { max-width: none; width: min(100%, 260px); }
+    .fright { flex-direction: column; min-width: 0; padding: 2px 0; }
+    .fright .line { flex-direction: column; width: auto; height: 22px; }
+    .fright .line::before { width: 1.5px; height: 100%; flex: none; }
+    .fright .head { border: 5px solid transparent; border-top-color: var(--muted); border-left-color: transparent; }
+    .fright .lbl { padding: 1px 0; }
+    .outcome { flex-direction: column; gap: 6px; }
+    .term-body { font-size: 12px; min-height: 300px; }
+    .tenets li { grid-template-columns: 40px 1fr; gap: 12px; }
+    .tenets li::before { font-size: 18px; padding-top: 3px; }
+  }
 
   @media (prefers-reduced-motion: no-preference) {
     .hero h1, .hero .pitch, .ctas { animation: rise .7s cubic-bezier(.22,1,.36,1) backwards; }
@@ -150,7 +229,7 @@
 </header>
 
 <section class="hero">
-  <h1>argos builds, <em>the operator owns the&nbsp;merge.</em></h1>
+  <h1>argos builds, <em>the operator owns the merge.</em></h1>
   <p class="pitch">
     Queue a ticket. Argos plans it, writes the code and tests in an
     <b>isolated git worktree</b>, verifies against acceptance criteria,
@@ -160,31 +239,61 @@
     plus a <b>stdlib-only Python CLI</b> that runs the whole loop headlessly.
   </p>
   <div class="ctas">
-    <a class="btn primary" href="graph.html">Explore the live spec graph →</a>
-    <a class="btn ghost" href="https://github.com/kingl0w/argos">Read the source</a>
+    <a class="btn primary" href="#demo">See it run ↓</a>
+    <a class="btn ghost" href="graph.html">Explore the live spec graph</a>
   </div>
 </section>
 
-<section class="loop">
-  <div class="kicker">The loop</div>
-  <div class="diagram"><pre>
-        argos/specs/  <span class="dim">(PRD, ARCHITECTURE, STATE, tickets, ADRs, conventions)</span>
-                                    │
-                  <span class="dim">argos queue add</span> ▼ │
-                          ┌───────────────┐  <span class="dim">reads ## Queue, runs independence</span>
-                          │  <span class="a">orchestrator</span> │  <span class="dim">detection, dispatches a batch,</span>
-                          └───────────────┘  <span class="dim">one git worktree per ticket</span>
-                                    │  <span class="dim">(parallel where independent)</span>
-                                    ▼
-  ┌─────────┐  <span class="dim">plan</span>   ┌─────────┐  <span class="dim">diff</span>   ┌──────────┐  <span class="dim">report</span>  ┌──────────┐
-  │ <span class="a">planner</span> │────────▶│  <span class="a">coder</span>  │────────▶│ <span class="a">watchdog</span> │─────────▶│ <span class="a">verifier</span> │
-  └─────────┘         └─────────┘         └──────────┘          └──────────┘
-       ▲                                       │                      │ <span class="ok">pass</span>
-       │ <span class="dim">autosteer (retry once)</span>                │ <span class="warn">CHAOS_BLOCKED</span>        ▼
-       │                                       ▼                 <span class="ok">push branch</span> ──▶ operator
-       └──────────────────────────────── operator <span class="dim">(/steer)</span>        <span class="dim">+ STATE.md</span>     reviews
-                                                                   <span class="dim">write</span>          &amp; merges</pre>
+<section id="demo">
+  <div class="kicker">Demo — a real session</div>
+  <p class="section-note">Every line below is genuine <code class="mono">argos</code> CLI output, captured from this repository — nothing mocked.</p>
+  <div class="term">
+    <div class="term-bar">
+      <span class="dot" style="background:#e15759"></span>
+      <span class="dot" style="background:#f28e2b"></span>
+      <span class="dot" style="background:#59a14f"></span>
+      <span class="title">argos — ~/projects/argos</span>
+      <button id="replay" type="button">↻ replay</button>
+    </div>
+    <div class="term-body" id="term"></div>
   </div>
+</section>
+
+<section>
+  <div class="kicker">The loop</div>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="fbox specs mono">argos/specs/ <small>PRD · ARCHITECTURE · STATE · tickets · ADRs · conventions</small></div>
+      <div class="fdown"><span class="lbl mono">argos queue add</span><span class="head"></span></div>
+      <div class="fbox">orchestrator <small>reads the queue, runs independence detection, dispatches a batch — one git worktree per ticket, parallel where independent</small></div>
+      <div class="fdown"><span class="head"></span></div>
+    </div>
+    <div class="pipeline">
+      <div class="agent">planner</div>
+      <div class="fright"><span class="lbl">plan</span><span class="line"><span class="head"></span></span></div>
+      <div class="agent">coder</div>
+      <div class="fright"><span class="lbl">diff</span><span class="line"><span class="head"></span></span></div>
+      <div class="agent">watchdog</div>
+      <div class="fright"><span class="lbl">report</span><span class="line"><span class="head"></span></span></div>
+      <div class="agent">verifier</div>
+    </div>
+    <div class="outcomes">
+      <div class="outcome"><span class="tag pass">pass</span><span>the verifier pushes a branch and writes <code>STATE.md</code> — the operator reviews and merges. Argos never merges on its own.</span></div>
+      <div class="outcome"><span class="tag block">CHAOS_BLOCKED</span><span>the watchdog caught the coder drifting from the plan — the loop halts and hands control to the operator (<code>/steer</code>).</span></div>
+      <div class="outcome"><span class="tag steer">autosteer</span><span>a flagged plan retries once, planner&nbsp;→&nbsp;coder. The verifier never retries: a failed verify is a failed ticket, not a loop.</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Run it on your repo</div>
+  <p class="section-note">Argos works on any codebase — your repo declares its own language, dependencies, and test command in <code class="mono">argos/conventions.md</code>, and every dispatched session builds to those rules.</p>
+  <div class="quick"><pre><span class="cmd">git clone https://github.com/kingl0w/argos.git</span>
+<span class="cmd">cd your-repo</span>
+<span class="cmd">argos init</span>            <span class="cmt"># scaffold argos/specs/, write conventions.md, install hooks</span>
+<span class="cmd">$EDITOR argos/conventions.md</span>   <span class="cmt"># your language, deps, test command</span>
+<span class="cmd">argos queue add ABC-001</span>        <span class="cmt"># queue a ticket you wrote under argos/specs/</span>
+<span class="cmd">argos orchestrate</span>     <span class="cmt"># builds, tests, verifies, pushes a branch — you merge</span></pre></div>
 </section>
 
 <section class="tenets">
@@ -196,8 +305,7 @@
         <p>Markdown specs — PRD, architecture, tickets, ADRs, <code>STATE.md</code> —
         drive every session. Hooks keep them honest: <code>STATE.md</code> is
         append-only and <code>argos status</code> fails when the specs contradict
-        themselves. The live graph you can explore above is projected straight
-        from them.</p>
+        themselves. The live graph above is projected straight from them.</p>
       </div>
     </li>
     <li>
@@ -227,5 +335,68 @@
 </footer>
 
 </div>
+
+<script>
+// real captured output — argos CLI run against this repo (2026-07-07)
+const SESSION = [
+  { cmd: "argos status",
+    out: [["ok", "argos status: ok — STATE.md, config, escalations, and git are mutually consistent."]] },
+  { cmd: "argos queue add ARG-005",
+    out: [["", "queued ARG-005"]] },
+  { cmd: "argos orchestrate --dry-run",
+    out: [["", "ARG-001"], ["", "ARG-002"], ["", "ARG-003"], ["", "ARG-004"], ["", "ARG-005"]] },
+];
+
+const term = document.getElementById("term");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let runId = 0;
+
+function renderStatic() {
+  term.innerHTML = SESSION.map(s =>
+    `<span class="p">$ </span><span class="c">${s.cmd}</span>\n` +
+    s.out.map(([cls, line]) => cls ? `<span class="${cls}">${line}</span>` : line).join("\n") + "\n\n"
+  ).join("") + `<span class="p">$ </span><span class="cursor"></span>`;
+}
+
+async function play() {
+  const id = ++runId;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  term.innerHTML = "";
+  let html = "";
+  const draw = tail => { term.innerHTML = html + tail; };
+  for (const s of SESSION) {
+    html += `<span class="p">$ </span>`;
+    draw(`<span class="cursor"></span>`);
+    await sleep(500); if (id !== runId) return;
+    let typed = "";
+    for (const ch of s.cmd) {
+      typed += ch;
+      draw(`<span class="c">${typed}</span><span class="cursor"></span>`);
+      await sleep(34 + Math.random() * 46); if (id !== runId) return;
+    }
+    await sleep(320); if (id !== runId) return;
+    html += `<span class="c">${s.cmd}</span>\n`;
+    for (const [cls, line] of s.out) {
+      html += (cls ? `<span class="${cls}">${line}</span>` : line) + "\n";
+      draw("");
+      await sleep(110); if (id !== runId) return;
+    }
+    html += "\n";
+    draw("");
+    await sleep(420); if (id !== runId) return;
+  }
+  draw(`<span class="p">$ </span><span class="cursor"></span>`);
+}
+
+document.getElementById("replay").addEventListener("click", () => reduced ? renderStatic() : play());
+
+if (reduced) { renderStatic(); }
+else {
+  // start when the terminal scrolls into view
+  new IntersectionObserver((entries, obs) => {
+    if (entries[0].isIntersecting) { obs.disconnect(); play(); }
+  }, { threshold: 0.35 }).observe(term);
+}
+</script>
 </body>
 </html>
