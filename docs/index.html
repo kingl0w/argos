@@ -103,14 +103,24 @@
     border: 1px solid #4a5468; border-radius: 4px; padding: 3px 10px; cursor: pointer;
   }
   .term-bar button:hover { color: #fff; border-color: #9aa3b2; }
+  .term-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .term-tabs button {
+    font: 500 13px "Roboto", sans-serif; color: var(--ink-soft);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
+    padding: 8px 16px; cursor: pointer;
+  }
+  .term-tabs button:hover { border-color: var(--ink); color: var(--ink); }
+  .term-tabs button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .term-body {
-    padding: 18px 18px 22px; min-height: 340px;
+    padding: 18px 18px 22px; min-height: 420px;
     font: 13px/1.7 "Roboto Mono", ui-monospace, monospace;
     color: var(--term-fg); white-space: pre-wrap; word-break: break-word;
   }
   .term-body .p { color: #7ea0c4; }      /* prompt */
   .term-body .c { color: #fff; }         /* command */
   .term-body .ok { color: #8fce9a; }
+  .term-body .warn { color: #f0a68c; }
+  .term-body .dim { color: #7b8496; }
   .term-body .cursor {
     display: inline-block; width: 8px; height: 15px; vertical-align: -2px;
     background: var(--term-fg); animation: blink 1s steps(1) infinite;
@@ -245,8 +255,9 @@
 </section>
 
 <section id="demo">
-  <div class="kicker">Demo — a real session</div>
-  <p class="section-note">Every line below is genuine <code class="mono">argos</code> CLI output, captured from this repository — nothing mocked.</p>
+  <div class="kicker">Demo — real sessions</div>
+  <p class="section-note">Pick a scenario. Every output line was captured from real <code class="mono">argos</code> runs against this repository — the drift scenario is staged, but the tool output is genuine.</p>
+  <div class="term-tabs" id="tabs" role="tablist"></div>
   <div class="term">
     <div class="term-bar">
       <span class="dot" style="background:#e15759"></span>
@@ -337,25 +348,58 @@
 </div>
 
 <script>
-// real captured output — argos CLI run against this repo (2026-07-07)
-const SESSION = [
-  { cmd: "argos status",
-    out: [["ok", "argos status: ok — STATE.md, config, escalations, and git are mutually consistent."]] },
-  { cmd: "argos queue add ARG-005",
-    out: [["", "queued ARG-005"]] },
-  { cmd: "argos orchestrate --dry-run",
-    out: [["", "ARG-001"], ["", "ARG-002"], ["", "ARG-003"], ["", "ARG-004"], ["", "ARG-005"]] },
-];
+// output captured from real argos CLI runs against this repo (2026-07-07)
+// steps: {note} narrator comment, {cmd, out} typed command + output lines [cssClass, text]
+const SCENARIOS = {
+  "Queue & dispatch": [
+    { note: "check the specs are internally consistent before doing anything" },
+    { cmd: "argos status",
+      out: [["ok", "argos status: ok — STATE.md, config, escalations, and git are mutually consistent."]] },
+    { note: "queue a ticket you wrote under argos/specs/tickets/" },
+    { cmd: "argos queue add ARG-005",
+      out: [["", "queued ARG-005"]] },
+    { note: "preview the dispatch batch — no worktrees created yet" },
+    { cmd: "argos orchestrate --dry-run",
+      out: [["", "ARG-001"], ["", "ARG-002"], ["", "ARG-003"], ["", "ARG-004"], ["", "ARG-005"]] },
+    { note: "drop --dry-run to dispatch for real: one isolated worktree per ticket,\neach session plans, codes, verifies, and pushes a branch for your review" },
+  ],
+  "Parallel sessions": [
+    { note: "can these two tickets run at the same time? argos reads each\nticket's planned files_touched and checks for overlap" },
+    { cmd: "argos independence ARG1-021 ARG1-022",
+      out: [["ok", "independent: ARG1-021 ARG1-022"], ["", "group 1: ARG1-021 ARG1-022"]] },
+    { note: "these two both touch the orchestrator — argos refuses to parallelize" },
+    { cmd: "argos independence ARG1-013 ARG1-022",
+      out: [["warn", "dependent: ARG1-013 ARG1-022 (shared file: argos/cli/commands/orchestrate.py, argos/cli/orchestrator/dispatch.py)"],
+            ["", "group 1: ARG1-013"], ["", "group 2: ARG1-022"]] },
+    { note: "each dispatched ticket gets its own branch and git worktree,\nisolated from your working tree and from sibling sessions" },
+    { cmd: "argos run-session --ticket ARG-002 --worktree .argos/worktrees/ARG-002 --epic EPIC-001 --dry-run",
+      out: [["", "branch: argos/ARG-002"], ["", "worktree: ~/projects/argos/.argos/worktrees/ARG-002"]] },
+  ],
+  "Drift caught": [
+    { note: "mid-session, the watchdog diffs the coder's changes against the plan.\nhere it caught an unplanned dependency — the loop halts, nothing merges" },
+    { cmd: "argos escalate --ticket ARG-005 --severity blocking --raised-by watchdog --body \"CHAOS_BLOCKED: coder added dependency 'requests' not present in the plan\"",
+      out: [["", "argos/specs/escalations/ARG-005-2026-07-07T22-25-59Z.md"]] },
+    { note: "escalations queue up for the operator — nothing proceeds on its own" },
+    { cmd: "argos attend --list",
+      out: [["warn", "ARG-005  2026-07-07T22:25:59Z  blocking  ARG-005-2026-07-07T22-25-59Z.md"]] },
+    { note: "argos attend (without --list) walks you through each escalation and\nrecords your decision into the ticket — the human ratifies every ambiguity" },
+  ],
+};
 
 const term = document.getElementById("term");
+const tabsBox = document.getElementById("tabs");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let current = Object.keys(SCENARIOS)[0];
 let runId = 0;
 
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const stepHtml = s => s.note
+  ? `<span class="dim"># ${esc(s.note).replace(/\n/g, "\n# ")}</span>\n`
+  : `<span class="p">$ </span><span class="c">${esc(s.cmd)}</span>\n` +
+    s.out.map(([cls, line]) => cls ? `<span class="${cls}">${esc(line)}</span>` : esc(line)).join("\n") + "\n\n";
+
 function renderStatic() {
-  term.innerHTML = SESSION.map(s =>
-    `<span class="p">$ </span><span class="c">${s.cmd}</span>\n` +
-    s.out.map(([cls, line]) => cls ? `<span class="${cls}">${line}</span>` : line).join("\n") + "\n\n"
-  ).join("") + `<span class="p">$ </span><span class="cursor"></span>`;
+  term.innerHTML = SCENARIOS[current].map(stepHtml).join("") + `<span class="p">$ </span><span class="cursor"></span>`;
 }
 
 async function play() {
@@ -364,37 +408,58 @@ async function play() {
   term.innerHTML = "";
   let html = "";
   const draw = tail => { term.innerHTML = html + tail; };
-  for (const s of SESSION) {
+  for (const s of SCENARIOS[current]) {
+    if (s.note) {
+      html += stepHtml(s);
+      draw("");
+      await sleep(900); if (id !== runId) return;
+      continue;
+    }
     html += `<span class="p">$ </span>`;
     draw(`<span class="cursor"></span>`);
-    await sleep(500); if (id !== runId) return;
+    await sleep(400); if (id !== runId) return;
     let typed = "";
     for (const ch of s.cmd) {
       typed += ch;
-      draw(`<span class="c">${typed}</span><span class="cursor"></span>`);
-      await sleep(34 + Math.random() * 46); if (id !== runId) return;
+      draw(`<span class="c">${esc(typed)}</span><span class="cursor"></span>`);
+      await sleep(22 + Math.random() * 34); if (id !== runId) return;
     }
-    await sleep(320); if (id !== runId) return;
-    html += `<span class="c">${s.cmd}</span>\n`;
+    await sleep(300); if (id !== runId) return;
+    html += `<span class="c">${esc(s.cmd)}</span>\n`;
     for (const [cls, line] of s.out) {
-      html += (cls ? `<span class="${cls}">${line}</span>` : line) + "\n";
+      html += (cls ? `<span class="${cls}">${esc(line)}</span>` : esc(line)) + "\n";
       draw("");
       await sleep(110); if (id !== runId) return;
     }
     html += "\n";
     draw("");
-    await sleep(420); if (id !== runId) return;
+    await sleep(500); if (id !== runId) return;
   }
   draw(`<span class="p">$ </span><span class="cursor"></span>`);
 }
 
-document.getElementById("replay").addEventListener("click", () => reduced ? renderStatic() : play());
+const start = () => reduced ? renderStatic() : play();
+
+Object.keys(SCENARIOS).forEach((name, i) => {
+  const b = document.createElement("button");
+  b.textContent = name;
+  b.setAttribute("role", "tab");
+  if (i === 0) b.classList.add("on");
+  b.addEventListener("click", () => {
+    current = name;
+    tabsBox.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    runId++;           // cancel any in-flight animation
+    start();
+  });
+  tabsBox.appendChild(b);
+});
+
+document.getElementById("replay").addEventListener("click", start);
 
 if (reduced) { renderStatic(); }
 else {
-  // start when the terminal scrolls into view
   new IntersectionObserver((entries, obs) => {
-    if (entries[0].isIntersecting) { obs.disconnect(); play(); }
+    if (entries[0].isIntersecting) { obs.disconnect(); start(); }
   }, { threshold: 0.35 }).observe(term);
 }
 </script>
