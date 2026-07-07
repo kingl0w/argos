@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Argos — spec-driven orchestration for AI coding agents</title>
+<meta name="description" content="Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1d2330;
+    --ink-soft: #3d4557;
+    --muted: #6b7280;
+    --paper: #faf9f6;
+    --panel: #ffffff;
+    --border: #d7dbe3;
+    --ticket: #4e79a7;
+    --epic: #f28e2b;
+    --adr: #59a14f;
+    --escalation: #e15759;
+    --session: #b07aa1;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.65 "Spline Sans Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+  .serif { font-family: "Fraunces", Georgia, serif; }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 48px); }
+
+  /* ruled top strip — the five agent colors */
+  .rule { display: flex; height: 5px; }
+  .rule span { flex: 1; }
+
+  header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 28px 0 0;
+  }
+  .wordmark { font-size: 15px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; }
+  .wordmark b { color: var(--ticket); font-weight: 500; }
+  header a { color: var(--muted); font-size: 13px; text-decoration: none; border-bottom: 1px solid var(--border); }
+  header a:hover { color: var(--ink); border-color: var(--ink); }
+
+  .hero { padding: clamp(56px, 10vh, 110px) 0 0; }
+  .hero h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    max-width: 15ch;
+  }
+  .hero h1 em { font-style: italic; color: var(--ticket); }
+  .hero .pitch {
+    margin-top: 28px;
+    max-width: 58ch;
+    font-size: 15px;
+    color: var(--ink-soft);
+  }
+  .hero .pitch b { font-weight: 500; color: var(--ink); }
+
+  .ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 40px; }
+  .btn {
+    display: inline-block; text-decoration: none;
+    font: 500 14px/1 "Spline Sans Mono", monospace;
+    padding: 15px 26px; border-radius: 2px;
+    transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s cubic-bezier(.22,1,.36,1);
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--ink); color: var(--paper); box-shadow: 3px 3px 0 var(--ticket); }
+  .btn.primary:hover { box-shadow: 5px 5px 0 var(--ticket); }
+  .btn.ghost { color: var(--ink); border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--border); }
+  .btn.ghost:hover { box-shadow: 5px 5px 0 var(--border); }
+
+  .loop { margin: clamp(64px, 12vh, 120px) 0 0; }
+  .kicker {
+    font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .kicker::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .diagram {
+    margin-top: 22px; background: var(--panel); border: 1px solid var(--border);
+    padding: clamp(16px, 3vw, 34px); overflow-x: auto;
+  }
+  .diagram pre {
+    font: 12.5px/1.5 "Spline Sans Mono", ui-monospace, monospace;
+    color: var(--ink-soft); min-width: 640px;
+  }
+  .diagram .a { color: var(--ticket); font-weight: 500; }
+  .diagram .warn { color: var(--escalation); }
+  .diagram .ok { color: var(--adr); }
+  .diagram .dim { color: var(--muted); }
+
+  .tenets { margin: clamp(64px, 12vh, 120px) 0 0; }
+  .tenets ol { list-style: none; counter-reset: tenet; margin-top: 8px; }
+  .tenets li {
+    counter-increment: tenet;
+    display: grid; grid-template-columns: 64px 1fr; gap: 18px;
+    padding: 26px 0; border-bottom: 1px solid var(--border);
+  }
+  .tenets li::before {
+    content: counter(tenet, decimal-leading-zero);
+    font-family: "Fraunces", Georgia, serif; font-size: 26px; color: var(--border);
+  }
+  .tenets h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; }
+  .tenets p { margin-top: 6px; font-size: 14px; color: var(--ink-soft); max-width: 62ch; }
+  .tenets code {
+    font-family: inherit; font-size: 13px; background: #eef0f4;
+    padding: 1px 5px; border-radius: 2px;
+  }
+
+  footer {
+    margin-top: clamp(64px, 12vh, 120px); padding: 26px 0 40px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    font-size: 13px; color: var(--muted);
+  }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--ink); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero h1, .hero .pitch, .ctas { animation: rise .7s cubic-bezier(.22,1,.36,1) backwards; }
+    .hero .pitch { animation-delay: .08s; }
+    .ctas { animation-delay: .16s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+  }
+</style>
+</head>
+<body>
+
+<div class="rule" aria-hidden="true">
+  <span style="background:var(--ticket)"></span>
+  <span style="background:var(--epic)"></span>
+  <span style="background:var(--adr)"></span>
+  <span style="background:var(--escalation)"></span>
+  <span style="background:var(--session)"></span>
+</div>
+
+<div class="wrap">
+
+<header>
+  <div class="wordmark">arg<b>o</b>s</div>
+  <a href="https://github.com/kingl0w/argos">github.com/kingl0w/argos</a>
+</header>
+
+<section class="hero">
+  <h1>argos builds, <em>the operator owns the&nbsp;merge.</em></h1>
+  <p class="pitch">
+    Queue a ticket. Argos plans it, writes the code and tests in an
+    <b>isolated git worktree</b>, verifies against acceptance criteria,
+    and <b>pushes a branch</b>. It never merges — you do.
+    Spec-driven outer-loop orchestration for AI coding agents:
+    a scaffold for Claude&nbsp;Code, Cursor, Codex&nbsp;CLI, and Gemini&nbsp;CLI,
+    plus a <b>stdlib-only Python CLI</b> that runs the whole loop headlessly.
+  </p>
+  <div class="ctas">
+    <a class="btn primary" href="graph.html">Explore the live spec graph →</a>
+    <a class="btn ghost" href="https://github.com/kingl0w/argos">Read the source</a>
+  </div>
+</section>
+
+<section class="loop">
+  <div class="kicker">The loop</div>
+  <div class="diagram"><pre>
+        argos/specs/  <span class="dim">(PRD, ARCHITECTURE, STATE, tickets, ADRs, conventions)</span>
+                                    │
+                  <span class="dim">argos queue add</span> ▼ │
+                          ┌───────────────┐  <span class="dim">reads ## Queue, runs independence</span>
+                          │  <span class="a">orchestrator</span> │  <span class="dim">detection, dispatches a batch,</span>
+                          └───────────────┘  <span class="dim">one git worktree per ticket</span>
+                                    │  <span class="dim">(parallel where independent)</span>
+                                    ▼
+  ┌─────────┐  <span class="dim">plan</span>   ┌─────────┐  <span class="dim">diff</span>   ┌──────────┐  <span class="dim">report</span>  ┌──────────┐
+  │ <span class="a">planner</span> │────────▶│  <span class="a">coder</span>  │────────▶│ <span class="a">watchdog</span> │─────────▶│ <span class="a">verifier</span> │
+  └─────────┘         └─────────┘         └──────────┘          └──────────┘
+       ▲                                       │                      │ <span class="ok">pass</span>
+       │ <span class="dim">autosteer (retry once)</span>                │ <span class="warn">CHAOS_BLOCKED</span>        ▼
+       │                                       ▼                 <span class="ok">push branch</span> ──▶ operator
+       └──────────────────────────────── operator <span class="dim">(/steer)</span>        <span class="dim">+ STATE.md</span>     reviews
+                                                                   <span class="dim">write</span>          &amp; merges</pre>
+  </div>
+</section>
+
+<section class="tenets">
+  <div class="kicker">Why it's built this way</div>
+  <ol>
+    <li>
+      <div>
+        <h2>Specs are the source of truth</h2>
+        <p>Markdown specs — PRD, architecture, tickets, ADRs, <code>STATE.md</code> —
+        drive every session. Hooks keep them honest: <code>STATE.md</code> is
+        append-only and <code>argos status</code> fails when the specs contradict
+        themselves. The live graph you can explore above is projected straight
+        from them.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h2>Five agents, each with a narrow job</h2>
+        <p>The planner never writes code. The coder can't touch specs. The
+        watchdog diffs code against plan and halts on drift. Only the verifier
+        runs tests and updates state. Narrow tool permissions make the loop
+        auditable instead of hopeful.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h2>The human owns the merge</h2>
+        <p>Sessions run in parallel worktrees when independence detection clears
+        them, and every one ends the same way: a pushed branch, never a silent
+        merge. Ambiguity escalates to the operator — there is no silent
+        recovery.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<footer>
+  <span>MIT · Python ≥3.9, zero runtime dependencies</span>
+  <span><a href="graph.html">spec graph</a> · <a href="https://github.com/kingl0w/argos">source</a></span>
+</footer>
+
+</div>
+</body>
+</html>

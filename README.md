@@ -2,6 +2,10 @@
 
 Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.
 
+**[Live demo →](https://kingl0w.github.io/argos/)** — product page plus an interactive knowledge graph of this repo's own specs, projected by [`argos-graph`](tools/argos-graph/).
+
+[![This repo's spec DAG rendered by argos-graph](docs/viz.png)](https://kingl0w.github.io/argos/graph.html)
+
 Spec driven outer loop orchestration for AI coding agents. An open source take on Traycer's Bart mode with no separate runtime and no proprietary service. Argos ships as **two complementary layers**:
 
 1. **A scaffold that targets multiple harnesses.** Specialized agents, slash commands, and hooks generated from a single `source/` tree into the native formats of Claude Code, Cursor, Codex CLI, and Gemini CLI.
