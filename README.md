@@ -1,5 +1,10 @@
 # Argos
 
+[![License: MIT](https://img.shields.io/github/license/kingl0w/argos)](LICENSE)
+![Python ≥3.9](https://img.shields.io/badge/python-%E2%89%A53.9-4e79a7)
+![Runtime dependencies: zero](https://img.shields.io/badge/runtime%20deps-zero-59a14f)
+[![Live demo](https://img.shields.io/badge/live%20demo-kingl0w.github.io%2Fargos-1d2330)](https://kingl0w.github.io/argos/)
+
 Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.
 
 **[Live demo →](https://kingl0w.github.io/argos/)** — product page plus an interactive knowledge graph of this repo's own specs, projected by [`argos-graph`](tools/argos-graph/).
