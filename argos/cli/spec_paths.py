@@ -21,6 +21,12 @@ whenever a command needs both.
 Paths are returned *relative* to ``repo_root`` (e.g. ``argos/specs/v1.0/STATE.md``),
 matching the literal defaults these helpers replace; callers join them against
 their own resolved repo root exactly as before. ADR-001: standard library only.
+
+One exception to the relative contract (ARG-006): a *bare* call (the ``'.'``
+default) made from a subdirectory of a repo anchors at the nearest ancestor
+containing ``argos/specs/`` or ``.git`` and returns absolute paths, so bare
+``orchestrate`` / ``queue`` work from anywhere inside the repo. Explicit
+``repo_root`` arguments and bare calls made at the repo root are unchanged.
 """
 
 from __future__ import annotations
@@ -51,14 +57,37 @@ def resolve_specs_root(repo_root: str | Path = ".") -> Path:
     return _SPECS_ROOT
 
 
+def _anchor(repo_root: str | Path) -> tuple[Path, Path]:
+    """Return ``(probe_root, join_base)`` for a deriver call.
+
+    Explicit roots pass through with a relative join (the historical
+    contract). A bare ``'.'`` invoked from a subdirectory of a repo anchors
+    both at the nearest ancestor containing ``argos/specs/`` or ``.git``, so
+    bare commands work from anywhere inside the repo (ARG-006). The ``.git``
+    probe stops the ascent at a repo boundary — a bare call from an
+    unscaffolded repo never escapes into a parent project's spec tree.
+    """
+    base = Path(repo_root)
+    if base == Path("."):
+        cwd = Path.cwd()
+        for candidate in (cwd, *cwd.parents):
+            if (candidate / _SPECS_ROOT).is_dir() or (candidate / ".git").exists():
+                if candidate != cwd:
+                    return candidate, candidate
+                break
+    return base, Path(".")
+
+
 def default_state_file(repo_root: str | Path = ".") -> str:
     """Default ``STATE.md`` path (relative to ``repo_root``)."""
-    return str(resolve_specs_root(repo_root) / "STATE.md")
+    probe, join = _anchor(repo_root)
+    return str(join / resolve_specs_root(probe) / "STATE.md")
 
 
 def default_ticket_dir(repo_root: str | Path = ".") -> str:
     """Default tickets directory (relative to ``repo_root``)."""
-    return str(resolve_specs_root(repo_root) / "tickets")
+    probe, join = _anchor(repo_root)
+    return str(join / resolve_specs_root(probe) / "tickets")
 
 
 def default_spec_paths(repo_root: str | Path = ".") -> tuple[str, str]:
@@ -67,5 +96,6 @@ def default_spec_paths(repo_root: str | Path = ".") -> tuple[str, str]:
     Use this whenever a command needs both defaults so the two can never
     disagree (see the module docstring's CRITICAL note).
     """
-    root = resolve_specs_root(repo_root)
-    return str(root / "STATE.md"), str(root / "tickets")
+    probe, join = _anchor(repo_root)
+    root = resolve_specs_root(probe)
+    return str(join / root / "STATE.md"), str(join / root / "tickets")

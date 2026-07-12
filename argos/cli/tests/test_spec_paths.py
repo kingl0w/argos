@@ -6,6 +6,7 @@ bare queue commands keep reading the real 65 KB STATE.md, not the flat
 meta-backlog).
 """
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -72,6 +73,67 @@ class DeriverSingleRootTests(unittest.TestCase):
             self.assertEqual(ticket_dir, str(Path("argos/specs/tickets")))
             self.assertEqual(Path(state_file).parent, Path(ticket_dir).parent)
             self.assertEqual(Path(state_file).parent, Path("argos/specs"))
+
+
+class SubdirectoryAnchorTests(unittest.TestCase):
+    """ARG-006: bare calls anchor at the enclosing repo root from a subdir."""
+
+    def _chdir(self, path: Path) -> None:
+        old = Path.cwd()
+        os.chdir(path)
+        self.addCleanup(os.chdir, old)
+
+    def test_bare_call_from_subdir_anchors_at_repo_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_state(root, "argos/specs/STATE.md")
+            sub = root / "docs" / "deep"
+            sub.mkdir(parents=True)
+            self._chdir(sub)
+            anchored = Path.cwd().parents[1]  # tmp, symlink-resolved by cwd
+            state_file, ticket_dir = default_spec_paths()
+            self.assertEqual(state_file, str(anchored / "argos/specs/STATE.md"))
+            self.assertEqual(ticket_dir, str(anchored / "argos/specs/tickets"))
+            self.assertEqual(default_state_file(), state_file)
+            self.assertEqual(default_ticket_dir(), ticket_dir)
+
+    def test_bare_call_at_repo_root_stays_relative(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_state(root, "argos/specs/STATE.md")
+            self._chdir(root)
+            self.assertEqual(
+                default_spec_paths(),
+                (str(Path("argos/specs/STATE.md")), str(Path("argos/specs/tickets"))),
+            )
+
+    def test_ascent_stops_at_git_boundary(self) -> None:
+        # An unscaffolded repo nested under a scaffolded parent: the .git
+        # boundary must win, never the parent's argos/specs/.
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp)
+            _make_state(parent, "argos/specs/STATE.md")
+            inner = parent / "vendored-repo"
+            (inner / ".git").mkdir(parents=True)
+            sub = inner / "src"
+            sub.mkdir()
+            self._chdir(sub)
+            anchored = Path.cwd().parent  # inner, symlink-resolved
+            self.assertEqual(
+                default_state_file(), str(anchored / "argos/specs/STATE.md")
+            )
+
+    def test_explicit_root_is_unchanged_from_subdir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_state(root, "argos/specs/STATE.md")
+            sub = root / "docs"
+            sub.mkdir()
+            self._chdir(sub)
+            # Explicit repo_root keeps the historical relative contract.
+            self.assertEqual(
+                default_state_file(root), str(Path("argos/specs/STATE.md"))
+            )
 
 
 class ArgosOwnRepoRegressionTests(unittest.TestCase):
