@@ -7,7 +7,7 @@
 
 Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.
 
-**[Live demo →](https://kingl0w.github.io/argos/)** — product page plus an interactive knowledge graph of this repo's own specs, projected by [`argos-graph`](tools/argos-graph/).
+**[Live demo →](https://kingl0w.github.io/argos/)**: product page plus an interactive knowledge graph of this repo's own specs, projected by [`argos-graph`](tools/argos-graph/).
 
 [![This repo's spec DAG rendered by argos-graph](docs/viz.png)](https://kingl0w.github.io/argos/graph.html)
 
@@ -127,26 +127,26 @@ Fill in `argos/specs/PRD.md` and `argos/specs/ARCHITECTURE.md` once. They are th
 
 ### Installing the CLI
 
-The CLI is stdlib-only Python (≥ 3.9) with zero third-party dependencies, so any of these work:
+The CLI is stdlib only Python (≥ 3.9) with zero third party dependencies, so any of these work:
 
 ```bash
 pipx install /path/to/argos       # isolated `argos` on your PATH
 pip install -e /path/to/argos     # editable install into your active environment
-python3 -m argos.cli <cmd>        # no install — works only with the argos clone as the current directory
+python3 -m argos.cli <cmd>        # no install, works only with the argos clone as the current directory
 ```
 
 Since `argos init` exists to scaffold *other* repos, install with pip or pipx so `argos` works from anywhere; the `python3 -m` form is the fallback for poking at the CLI from inside the clone.
 
-## Self-hosting: the two spec trees
+## Self hosting: the two spec trees
 
 Argos runs on itself, so this repo carries two spec trees:
 
-- **`argos/specs/`** — the flat, living spec for the repo as a whole: `STATE.md`, `tickets/` (`ARG-*`), `decisions/`, `escalations/`. This is the same layout `argos init` scaffolds onto a foreign repo.
-- **`argos/specs/v1.0/`** — the versioned spec set for the Python CLI layer, with its own `STATE.md`, `tickets/` (`ARG1-*`), `agents/`, and `schemas/`.
+- **`argos/specs/`** is the flat, living spec for the repo as a whole: `STATE.md`, `tickets/` (`ARG-*`), `decisions/`, `escalations/`. This is the same layout `argos init` scaffolds onto a foreign repo.
+- **`argos/specs/v1.0/`** is the versioned spec set for the Python CLI layer, with its own `STATE.md`, `tickets/` (`ARG1-*`), `agents/`, and `schemas/`.
 
-The CLI decides which tree bare commands operate on by probing for `argos/specs/v1.0/STATE.md` (`argos/cli/spec_paths.py`): when it exists — as in this repo — `orchestrate`, `queue`, etc. target the v1.0 tree and print a note on stderr; on an `init`-scaffolded repo they target the flat tree. `--state-file` / `--ticket-dir` always override.
+The CLI decides which tree bare commands operate on by probing for `argos/specs/v1.0/STATE.md` (`argos/cli/spec_paths.py`): when it exists, as in this repo, `orchestrate`, `queue`, etc. target the v1.0 tree and print a note on stderr; on a repo scaffolded by `init` they target the flat tree. `--state-file` / `--ticket-dir` always override.
 
-So, where does a new ticket go? **CLI-layer work** → `argos/specs/v1.0/tickets/ARG1-NNN-*.md`. **Anything else in this repo** (docs, scripts, tooling, process) → `argos/specs/tickets/ARG-NNN-*.md`.
+So, where does a new ticket go? **CLI layer work** goes in `argos/specs/v1.0/tickets/` as `ARG1-NNN-*.md`. **Anything else in this repo** (docs, scripts, tooling, process) goes in `argos/specs/tickets/` as `ARG-NNN-*.md`.
 
 ## Upgrading from v0.4
 
@@ -193,7 +193,7 @@ Running `scripts/build.sh` again regenerates the per harness directories from `s
 | Source of truth | Platform state              | `STATE.md` + git                                               |
 | Extensibility   | Vendor roadmap              | Fork the template, edit the agents, declare your own conventions |
 | Cost model      | SaaS subscription           | Your own model provider API usage                              |
-| Lock-in         | High: specs live in their system | None: delete the harness directories and you still have code |
+| Lock in         | High: specs live in their system | None: delete the harness directories and you still have code |
 
 Argos is worse at: onboarding polish, hosted dashboards, multi user review UI. Traycer is worse at running offline, being inspected, and being forked.
 
