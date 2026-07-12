@@ -16,347 +16,193 @@
 <meta name="twitter:title" content="Argos — spec-driven orchestration for AI coding agents">
 <meta name="twitter:description" content="Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.">
 <meta name="twitter:image" content="https://kingl0w.github.io/argos/social.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #1d2330;
-    --ink-soft: #3d4557;
-    --muted: #6b7280;
-    --paper: #faf9f6;
-    --panel: #ffffff;
-    --border: #d7dbe3;
-    --ticket: #4e79a7;
-    --epic: #f28e2b;
-    --adr: #59a14f;
-    --escalation: #e15759;
-    --session: #b07aa1;
-    --term-bg: #1d2330;
-    --term-fg: #e6e9f0;
+    --ink: #26251f;
+    --soft: #55534a;
+    --muted: #807d72;
+    --paper: #faf9f4;
+    --border: #ddd9cc;
+    --link: #35597f;
+    --term-bg: #26251f;
+    --term-fg: #e9e6da;
   }
-  * { box-sizing: border-box; margin: 0; }
-  html { scroll-behavior: smooth; }
+  * { box-sizing: border-box; }
   body {
     background: var(--paper);
     color: var(--ink);
-    font: 16px/1.65 "Roboto", system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
+    font: 17px/1.55 Charter, "Bitstream Charter", Georgia, "Times New Roman", serif;
+    max-width: 44em;
+    margin: 0 auto;
+    padding: 2.5em 1.2em 4em;
   }
-  .mono { font-family: "Roboto Mono", ui-monospace, monospace; }
+  code, pre, .term-body { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  code { font-size: .82em; background: #f0eee4; padding: 1px 4px; }
+  pre code { background: none; padding: 0; }
 
-  .wrap { max-width: 920px; margin: 0 auto; padding: 0 clamp(16px, 5vw, 48px); }
-
-  .rule { display: flex; height: 5px; }
-  .rule span { flex: 1; }
+  a { color: var(--link); }
+  a:hover { color: var(--ink); }
 
   header {
-    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-    padding: 24px 0 0;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1em;
+    border-bottom: 1px solid var(--border); padding-bottom: .6em; margin-bottom: 3em;
+    font-size: .82em; color: var(--muted);
   }
-  .wordmark { font-size: 15px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
-  .wordmark b { color: var(--ticket); }
-  header a { color: var(--muted); font-size: 13px; text-decoration: none; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  header a:hover { color: var(--ink); border-color: var(--ink); }
 
-  .hero { padding: clamp(48px, 9vh, 100px) 0 0; }
-  .hero h1 {
-    font-weight: 700;
-    font-size: clamp(30px, 5.5vw, 52px);
-    line-height: 1.15;
-    letter-spacing: -0.015em;
-    max-width: 17ch;
-  }
-  .hero h1 em { font-style: normal; color: var(--ticket); }
-  .hero .pitch {
-    margin-top: 24px;
-    max-width: 62ch;
-    font-size: 16px;
-    color: var(--ink-soft);
-  }
-  .hero .pitch b { font-weight: 500; color: var(--ink); }
-
-  .ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 36px; }
-  .btn {
-    display: inline-block; text-decoration: none; text-align: center;
-    font: 500 14px/1 "Roboto", sans-serif;
-    padding: 15px 26px; border-radius: 3px;
-    transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s cubic-bezier(.22,1,.36,1);
-  }
-  .btn:hover { transform: translateY(-2px); }
-  .btn.primary { background: var(--ink); color: var(--paper); box-shadow: 3px 3px 0 var(--ticket); }
-  .btn.primary:hover { box-shadow: 5px 5px 0 var(--ticket); }
-  .btn.ghost { color: var(--ink); border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--border); }
-  .btn.ghost:hover { box-shadow: 5px 5px 0 var(--border); }
-
-  section { margin-top: clamp(56px, 11vh, 110px); }
-  .kicker {
-    font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted);
-    display: flex; align-items: center; gap: 14px;
-  }
-  .kicker::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-  .section-note { margin-top: 14px; font-size: 14px; color: var(--ink-soft); max-width: 64ch; }
+  h1 { font-size: 2em; margin: 0 0 .1em; }
+  .tagline { color: var(--soft); font-style: italic; margin-top: 0; }
+  h2 { font-size: 1.3em; margin: 3em 0 .5em; }
+  h3 { font-size: 1em; margin: 1.6em 0 .2em; }
+  h3 + p { margin-top: .2em; }
+  p { margin: .8em 0; }
 
   /* terminal demo */
-  .term {
-    margin-top: 22px; background: var(--term-bg); border-radius: 8px;
-    box-shadow: 0 12px 32px rgba(29,35,48,.18);
-    overflow: hidden;
-  }
-  .term-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 14px; background: #2a3242;
-  }
-  .term-bar .dot { width: 11px; height: 11px; border-radius: 50%; background: #4a5468; }
-  .term-bar .title { margin-left: auto; margin-right: auto; font: 12px "Roboto Mono", monospace; color: #9aa3b2; }
-  .term-bar button {
-    font: 12px "Roboto Mono", monospace; color: #9aa3b2; background: none;
-    border: 1px solid #4a5468; border-radius: 4px; padding: 3px 10px; cursor: pointer;
-  }
-  .term-bar button:hover { color: #fff; border-color: #9aa3b2; }
-  .term-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .term-tabs { margin: 1em 0 .6em; font-size: .9em; }
   .term-tabs button {
-    font: 500 13px "Roboto", sans-serif; color: var(--ink-soft);
-    background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
-    padding: 8px 16px; cursor: pointer;
+    background: none; border: none; padding: 0; margin-right: 1.4em; cursor: pointer;
+    font: inherit; color: var(--link); text-decoration: underline;
   }
-  .term-tabs button:hover { border-color: var(--ink); color: var(--ink); }
-  .term-tabs button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-  .term-body {
-    padding: 18px 18px 22px; min-height: 420px;
-    font: 13px/1.7 "Roboto Mono", ui-monospace, monospace;
+  .term-tabs button.on { color: var(--ink); text-decoration: none; font-weight: bold; cursor: default; }
+  .term {
+    background: var(--term-bg); border: 1px solid var(--ink);
+    padding: 14px 16px 18px; min-height: 420px;
+    font-size: 13px; line-height: 1.7;
     color: var(--term-fg); white-space: pre-wrap; word-break: break-word;
   }
-  .term-body .p { color: #7ea0c4; }      /* prompt */
-  .term-body .c { color: #fff; }         /* command */
-  .term-body .ok { color: #8fce9a; }
-  .term-body .warn { color: #f0a68c; }
-  .term-body .dim { color: #7b8496; }
-  .term-body .cursor {
+  .term .p { color: #93b0cc; }      /* prompt */
+  .term .c { color: #fdfcf7; }      /* command */
+  .term .ok { color: #9cc79b; }
+  .term .warn { color: #dfa27e; }
+  .term .dim { color: #8a877a; }
+  .term .cursor {
     display: inline-block; width: 8px; height: 15px; vertical-align: -2px;
     background: var(--term-fg); animation: blink 1s steps(1) infinite;
   }
   @keyframes blink { 50% { opacity: 0; } }
+  .caption { font-size: .82em; color: var(--muted); margin-top: .5em; }
+  .caption button {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font: inherit; color: var(--link); text-decoration: underline;
+  }
 
-  /* loop diagram — html/css, no ascii */
-  .flow { margin-top: 22px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: clamp(20px, 4vw, 36px); }
-  .flow-step { display: flex; flex-direction: column; align-items: center; text-align: center; }
-  .fbox {
-    border: 1.5px solid var(--ink); border-radius: 4px; background: var(--paper);
-    padding: 10px 18px; font: 500 14px "Roboto Mono", monospace;
+  /* diagrams and code blocks */
+  pre {
+    border: 1px solid var(--border); background: #fdfcf7;
+    padding: 14px 16px; overflow-x: auto;
+    font-size: 13px; line-height: 1.7; color: var(--soft);
   }
-  .fbox small { display: block; font: 400 11px/1.5 "Roboto", sans-serif; color: var(--muted); max-width: 34ch; }
-  .fbox.specs { border-style: dashed; border-color: var(--muted); color: var(--ink-soft); }
-  .fdown { display: flex; flex-direction: column; align-items: center; color: var(--muted); padding: 2px 0; }
-  .fdown .lbl { font: 11px "Roboto Mono", monospace; padding: 1px 0; }
-  .fdown::before, .fdown::after { content: ""; width: 1.5px; height: 12px; background: var(--muted); }
-  .fdown::after { clip-path: none; }
-  .fdown .head { width: 0; height: 0; border: 5px solid transparent; border-top-color: var(--muted); margin-top: -1px; }
-  .pipeline { display: flex; align-items: stretch; justify-content: center; gap: 0; margin-top: 2px; flex-wrap: nowrap; }
-  .agent {
-    flex: 1; max-width: 150px; border: 1.5px solid var(--ticket); border-radius: 4px;
-    background: var(--paper); padding: 12px 8px; text-align: center;
-    font: 500 14px "Roboto Mono", monospace; color: var(--ticket);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .fright { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); padding: 0 2px; min-width: 52px; }
-  .fright .lbl { font: 11px "Roboto Mono", monospace; }
-  .fright .line { display: flex; align-items: center; width: 100%; }
-  .fright .line::before { content: ""; flex: 1; height: 1.5px; background: var(--muted); }
-  .fright .head { width: 0; height: 0; border: 5px solid transparent; border-left-color: var(--muted); }
-  .outcomes { margin-top: 26px; display: grid; gap: 10px; }
-  .outcome { display: flex; gap: 12px; align-items: baseline; font-size: 14px; color: var(--ink-soft); }
-  .outcome .tag {
-    flex: none; font: 500 11px "Roboto Mono", monospace; padding: 3px 8px; border-radius: 3px;
-    color: #fff; min-width: 118px; text-align: center;
-  }
-  .outcome .tag.pass { background: var(--adr); }
-  .outcome .tag.block { background: var(--escalation); }
-  .outcome .tag.steer { background: var(--epic); }
-  .outcome code { font-family: "Roboto Mono", monospace; font-size: 13px; background: #eef0f4; padding: 1px 5px; border-radius: 2px; }
+  pre .cmd { color: var(--ink); font-weight: bold; }
+  pre .cmt { color: var(--muted); }
 
-  /* quickstart */
-  .quick {
-    margin-top: 22px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-    padding: clamp(16px, 3vw, 28px); overflow-x: auto;
-  }
-  .quick pre { font: 13px/1.9 "Roboto Mono", ui-monospace, monospace; color: var(--ink-soft); }
-  .quick .cmd { color: var(--ink); font-weight: 500; }
-  .quick .cmt { color: var(--muted); }
-
-  /* tenets */
-  .tenets ol { list-style: none; counter-reset: tenet; margin-top: 8px; padding: 0; }
-  .tenets li {
-    counter-increment: tenet;
-    display: grid; grid-template-columns: 56px 1fr; gap: 16px;
-    padding: 24px 0; border-bottom: 1px solid var(--border);
-  }
-  .tenets li::before {
-    content: counter(tenet, decimal-leading-zero);
-    font: 700 24px "Roboto", sans-serif; color: var(--border);
-  }
-  .tenets h2 { font-weight: 700; font-size: 18px; }
-  .tenets p { margin-top: 6px; font-size: 14px; color: var(--ink-soft); max-width: 64ch; }
-  .tenets code { font-family: "Roboto Mono", monospace; font-size: 13px; background: #eef0f4; padding: 1px 5px; border-radius: 2px; }
+  ul { padding-left: 1.2em; }
+  li { margin: .5em 0; }
 
   footer {
-    margin-top: clamp(56px, 11vh, 110px); padding: 24px 0 40px;
-    border-top: 1px solid var(--border);
-    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-    font-size: 13px; color: var(--muted);
+    margin-top: 4em; border-top: 1px solid var(--border); padding-top: .8em;
+    font-size: .82em; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 1em; flex-wrap: wrap;
   }
   footer a { color: var(--muted); }
-  footer a:hover { color: var(--ink); }
 
   @media (max-width: 640px) {
-    .ctas { flex-direction: column; }
-    .btn { width: 100%; }
-    .pipeline { flex-direction: column; align-items: center; }
-    .agent { max-width: none; width: min(100%, 260px); }
-    .fright { flex-direction: column; min-width: 0; padding: 2px 0; }
-    .fright .line { flex-direction: column; width: auto; height: 22px; }
-    .fright .line::before { width: 1.5px; height: 100%; flex: none; }
-    .fright .head { border: 5px solid transparent; border-top-color: var(--muted); border-left-color: transparent; }
-    .fright .lbl { padding: 1px 0; }
-    .outcome { flex-direction: column; gap: 6px; }
-    .term-body { font-size: 12px; min-height: 300px; }
-    .tenets li { grid-template-columns: 40px 1fr; gap: 12px; }
-    .tenets li::before { font-size: 18px; padding-top: 3px; }
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .hero h1, .hero .pitch, .ctas { animation: rise .7s cubic-bezier(.22,1,.36,1) backwards; }
-    .hero .pitch { animation-delay: .08s; }
-    .ctas { animation-delay: .16s; }
-    @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+    body { padding-top: 1.4em; }
+    .term { min-height: 300px; font-size: 12px; }
   }
 </style>
 </head>
 <body>
 
-<div class="rule" aria-hidden="true">
-  <span style="background:var(--ticket)"></span>
-  <span style="background:var(--epic)"></span>
-  <span style="background:var(--adr)"></span>
-  <span style="background:var(--escalation)"></span>
-  <span style="background:var(--session)"></span>
-</div>
-
-<div class="wrap">
-
 <header>
-  <div class="wordmark">arg<b>o</b>s</div>
+  <span>argos</span>
   <a href="https://github.com/kingl0w/argos">github.com/kingl0w/argos</a>
 </header>
 
-<section class="hero">
-  <h1>argos builds, <em>the operator owns the merge.</em></h1>
-  <p class="pitch">
-    Queue a ticket. Argos plans it, writes the code and tests in an
-    <b>isolated git worktree</b>, verifies against acceptance criteria,
-    and <b>pushes a branch</b>. It never merges — you do.
-    Spec-driven outer-loop orchestration for AI coding agents:
-    a scaffold for Claude&nbsp;Code, Cursor, Codex&nbsp;CLI, and Gemini&nbsp;CLI,
-    plus a <b>stdlib-only Python CLI</b> that runs the whole loop headlessly.
-  </p>
-  <div class="ctas">
-    <a class="btn primary" href="#demo">See it run ↓</a>
-    <a class="btn ghost" href="graph.html">Explore the live spec graph</a>
-  </div>
-</section>
+<h1>Argos</h1>
+<p class="tagline">Spec-driven orchestration for AI coding agents.</p>
 
-<section id="demo">
-  <div class="kicker">Demo — real sessions</div>
-  <p class="section-note">Pick a scenario. Every output line was captured from real <code class="mono">argos</code> runs against this repository — the drift scenario is staged, but the tool output is genuine.</p>
-  <div class="term-tabs" id="tabs" role="tablist"></div>
-  <div class="term">
-    <div class="term-bar">
-      <span class="dot" style="background:#e15759"></span>
-      <span class="dot" style="background:#f28e2b"></span>
-      <span class="dot" style="background:#59a14f"></span>
-      <span class="title">argos — ~/projects/argos</span>
-      <button id="replay" type="button">↻ replay</button>
-    </div>
-    <div class="term-body" id="term"></div>
-  </div>
-</section>
+<p>You queue a ticket. Argos plans it, writes the code and tests in an
+isolated git worktree, checks the result against the ticket's acceptance
+criteria, and pushes a branch. It never merges; that part is yours.</p>
 
-<section>
-  <div class="kicker">The loop</div>
-  <div class="flow">
-    <div class="flow-step">
-      <div class="fbox specs mono">argos/specs/ <small>PRD · ARCHITECTURE · STATE · tickets · ADRs · conventions</small></div>
-      <div class="fdown"><span class="lbl mono">argos queue add</span><span class="head"></span></div>
-      <div class="fbox">orchestrator <small>reads the queue, runs independence detection, dispatches a batch — one git worktree per ticket, parallel where independent</small></div>
-      <div class="fdown"><span class="head"></span></div>
-    </div>
-    <div class="pipeline">
-      <div class="agent">planner</div>
-      <div class="fright"><span class="lbl">plan</span><span class="line"><span class="head"></span></span></div>
-      <div class="agent">coder</div>
-      <div class="fright"><span class="lbl">diff</span><span class="line"><span class="head"></span></span></div>
-      <div class="agent">watchdog</div>
-      <div class="fright"><span class="lbl">report</span><span class="line"><span class="head"></span></span></div>
-      <div class="agent">verifier</div>
-    </div>
-    <div class="outcomes">
-      <div class="outcome"><span class="tag pass">pass</span><span>the verifier pushes a branch and writes <code>STATE.md</code> — the operator reviews and merges. Argos never merges on its own.</span></div>
-      <div class="outcome"><span class="tag block">CHAOS_BLOCKED</span><span>the watchdog caught the coder drifting from the plan — the loop halts and hands control to the operator (<code>/steer</code>).</span></div>
-      <div class="outcome"><span class="tag steer">autosteer</span><span>a flagged plan retries once, planner&nbsp;→&nbsp;coder. The verifier never retries: a failed verify is a failed ticket, not a loop.</span></div>
-    </div>
-  </div>
-</section>
+<p>It works as a scaffold for Claude Code, Cursor, Codex CLI, and Gemini CLI,
+and ships a Python CLI (stdlib only, no runtime dependencies) that runs the
+whole loop headlessly. Watch a real session below, browse the
+<a href="graph.html">live spec graph</a>, or
+<a href="https://github.com/kingl0w/argos">read the source</a>.</p>
 
-<section>
-  <div class="kicker">Run it on your repo</div>
-  <p class="section-note">Argos works on any codebase — your repo declares its own language, dependencies, and test command in <code class="mono">argos/conventions.md</code>, and every dispatched session builds to those rules.</p>
-  <div class="quick"><pre><span class="cmd">git clone https://github.com/kingl0w/argos.git</span>
+<h2 id="demo">A real session</h2>
+
+<div class="term-tabs" id="tabs" role="tablist"></div>
+<div class="term term-body" id="term"></div>
+<p class="caption">Every output line was captured from <code>argos</code> runs
+against this repository on 2026-07-07. The drift scenario is staged; the tool
+output is genuine. <button id="replay" type="button">Replay</button></p>
+
+<h2>The loop</h2>
+
+<pre role="img" aria-label="Flow diagram: specs feed the orchestrator via argos queue add; the orchestrator dispatches one worktree per ticket through planner, coder, watchdog, and verifier; the verifier pushes a branch for the operator to merge.">
+argos/specs/          PRD, ARCHITECTURE, STATE.md, tickets, ADRs
+     |
+     |  argos queue add TICKET-ID
+     v
+orchestrator          picks independent tickets, one git worktree each
+     |
+     v
+planner -> coder -> watchdog -> verifier
+                                   |
+                                   v
+                             branch pushed
+                              (you merge)</pre>
+
+<p>A session ends one of three ways:</p>
+<ul>
+  <li><strong>Pass.</strong> The verifier pushes a branch and appends to
+  <code>STATE.md</code>. You review and merge; Argos never merges on its own.</li>
+  <li><strong><code>CHAOS_BLOCKED</code>.</strong> The watchdog caught the coder
+  drifting from the plan. The loop halts and waits for <code>/steer</code>.
+  A trivially flagged plan retries once, planner to coder; anything structural
+  goes to you.</li>
+  <li><strong>Failed verify.</strong> A failed ticket. The verifier never
+  retries; you decide what happens next.</li>
+</ul>
+
+<h2>Run it on your own repo</h2>
+
+<p>Argos works on any codebase. Your repo declares its language, dependencies,
+and test command in <code>argos/conventions.md</code>, and every dispatched
+session builds to those rules.</p>
+
+<pre><span class="cmd">git clone https://github.com/kingl0w/argos.git</span>
 <span class="cmd">cd your-repo</span>
 <span class="cmd">argos init</span>            <span class="cmt"># scaffold argos/specs/, write conventions.md, install hooks</span>
 <span class="cmd">$EDITOR argos/conventions.md</span>   <span class="cmt"># your language, deps, test command</span>
 <span class="cmd">argos queue add ABC-001</span>        <span class="cmt"># queue a ticket you wrote under argos/specs/</span>
-<span class="cmd">argos orchestrate</span>     <span class="cmt"># builds, tests, verifies, pushes a branch — you merge</span></pre></div>
-</section>
+<span class="cmd">argos orchestrate</span>     <span class="cmt"># builds, tests, verifies, pushes a branch. you merge</span></pre>
 
-<section class="tenets">
-  <div class="kicker">Why it's built this way</div>
-  <ol>
-    <li>
-      <div>
-        <h2>Specs are the source of truth</h2>
-        <p>Markdown specs — PRD, architecture, tickets, ADRs, <code>STATE.md</code> —
-        drive every session. Hooks keep them honest: <code>STATE.md</code> is
-        append-only and <code>argos status</code> fails when the specs contradict
-        themselves. The live graph above is projected straight from them.</p>
-      </div>
-    </li>
-    <li>
-      <div>
-        <h2>Five agents, each with a narrow job</h2>
-        <p>The planner never writes code. The coder can't touch specs. The
-        watchdog diffs code against plan and halts on drift. Only the verifier
-        runs tests and updates state. Narrow tool permissions make the loop
-        auditable instead of hopeful.</p>
-      </div>
-    </li>
-    <li>
-      <div>
-        <h2>The human owns the merge</h2>
-        <p>Sessions run in parallel worktrees when independence detection clears
-        them, and every one ends the same way: a pushed branch, never a silent
-        merge. Ambiguity escalates to the operator — there is no silent
-        recovery.</p>
-      </div>
-    </li>
-  </ol>
-</section>
+<h2>Why it's built this way</h2>
+
+<h3>Specs are the source of truth.</h3>
+<p>Markdown specs (PRD, architecture, tickets, ADRs, <code>STATE.md</code>)
+drive every session. Hooks keep them honest: <code>STATE.md</code> is
+append-only, and <code>argos status</code> fails when the specs contradict
+each other. The <a href="graph.html">spec graph</a> is projected straight
+from those files.</p>
+
+<h3>Five agents, each with a narrow job.</h3>
+<p>The planner never writes code. The coder can't touch specs. The watchdog
+diffs the code against the plan and halts on drift. Only the verifier runs
+tests and updates state. Narrow tool permissions make the loop auditable
+instead of hopeful.</p>
+
+<h3>The human owns the merge.</h3>
+<p>Sessions run in parallel worktrees when independence detection clears them,
+and every session ends the same way: a pushed branch. Ambiguity escalates to
+the operator. There is no silent recovery.</p>
 
 <footer>
-  <span>MIT · Python ≥3.9, zero runtime dependencies</span>
+  <span>MIT · Python ≥ 3.9, zero runtime dependencies</span>
   <span><a href="graph.html">spec graph</a> · <a href="https://github.com/kingl0w/argos">source</a></span>
 </footer>
-
-</div>
 
 <script>
 // output captured from real argos CLI runs against this repo (2026-07-07)
