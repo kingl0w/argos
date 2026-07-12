@@ -779,7 +779,11 @@ class WrapperHarnessProcessOverlapTests(unittest.TestCase):
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait(timeout=5)
-        self.assertEqual(proc.returncode, 0, msg=proc.stderr.read() if proc.stderr else "")
+        stderr_text = proc.stderr.read() if proc.stderr else ""
+        for pipe in (proc.stdout, proc.stderr):
+            if pipe is not None:
+                pipe.close()
+        self.assertEqual(proc.returncode, 0, msg=stderr_text)
         self.assertGreaterEqual(
             peak,
             3,

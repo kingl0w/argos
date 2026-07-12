@@ -1,8 +1,9 @@
 # ARG-001 — argos-status.sh exits non-zero when ADRs are present
 
-**Status:** Queued
+**Status:** Done
 **Created:** 2026-07-01
 **Priority:** P2
+**Closed:** 2026-07-12
 
 ## Intent
 
@@ -18,5 +19,9 @@ Filed from the v0.5 queue (this ticket predates the file; the file was backfille
 
 ## Acceptance criteria
 
-- [ ] A repo containing only accepted/decided ADRs gets exit 0 from the supported status entry point.
-- [ ] The chosen disposition for `argos-status.sh` (fix vs. deprecate) is recorded in this ticket.
+- [x] A repo containing only accepted/decided ADRs gets exit 0 from the supported status entry point.
+- [x] The chosen disposition for `argos-status.sh` (fix vs. deprecate) is recorded in this ticket.
+
+## Resolution
+
+Closed 2026-07-12 (audit batch, out-of-loop). The premise no longer reproduced: with accepted ADR-001 on disk, `argos-status.sh` printed "Proposed ADRs: (none)" and exited 0. Disposition: **deleted** — `argos-status.sh` (along with `argos-sync.sh` and `argos-init.sh`) was removed as superseded by the CLI (`argos status` / `argos sync` / `argos init`), which is the supported entry point and exits 0 on decided ADRs (verified live: all four integrity checks pass with ADR-001 present).

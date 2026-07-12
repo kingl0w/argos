@@ -1,8 +1,9 @@
 # ARG-002 — Document self-hosting setup in README
 
-**Status:** Queued
+**Status:** Done
 **Created:** 2026-07-01
 **Priority:** P2
+**Closed:** 2026-07-12
 
 ## Intent
 
@@ -18,5 +19,9 @@ Filed from the v0.5 queue (file backfilled 2026-07-01 so the queue entry resolve
 
 ## Acceptance criteria
 
-- [ ] README (or a linked doc) explains the two spec trees and which one the CLI resolves.
-- [ ] A new contributor can answer "where do I put a new ticket for the CLI layer?" from the docs alone.
+- [x] README (or a linked doc) explains the two spec trees and which one the CLI resolves.
+- [x] A new contributor can answer "where do I put a new ticket for the CLI layer?" from the docs alone.
+
+## Resolution
+
+Closed 2026-07-12 (audit batch, out-of-loop). README gained a "Self-hosting: the two spec trees" section explaining both trees, the `spec_paths.py` probe rule, the new stderr note when the v1.0 tree is auto-selected, and an explicit answer to "where does a new ticket go" for both layers. An "Installing the CLI" subsection (pipx / `pip install -e` / `python3 -m argos.cli`) was added alongside, since the `python3 -m` form only works from inside the clone.

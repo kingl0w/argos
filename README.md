@@ -28,7 +28,7 @@ Argos is opinionated. Specs are the source of truth, a ticket moves through a fi
 - **A Python CLI** (`argos`) that uses only the standard library, drives the same loop headlessly, and adds queue management, parallel dispatch, escalation handling, and reconciliation.
 - **Hooks** that keep specs honest. A commit hook keeps `STATE.md` append only, and `argos status` exits nonzero when the specs are internally inconsistent.
 
-Argos is **not** an agent framework, a fine tune, or a hosted product. It is a template repo *and* a CLI. The current entry path is the **`argos init`** command (see [Quickstart](#quickstart)). The older interactive bootstrap (`argos/scripts/argos-init.sh`) still exists and is described under [The two entry paths](#the-two-entry-paths).
+Argos is **not** an agent framework, a fine tune, or a hosted product. It is a template repo *and* a CLI. The entry path is the **`argos init`** command (see [Quickstart](#quickstart)).
 
 ## The CLI
 
@@ -125,10 +125,28 @@ argos orchestrate
 
 Fill in `argos/specs/PRD.md` and `argos/specs/ARCHITECTURE.md` once. They are the input the planner reads on every ticket. Inside a harness, `/new-ticket` drafts tickets and `/orchestrate` (or `/next`) drives the loop interactively.
 
-### The two entry paths
+### Installing the CLI
 
-- **`argos init` (current, primary).** The CLI command: scaffolds `argos/specs/`, writes the per repo `argos/conventions.md`, and installs the git hooks. Use this.
-- **`argos/scripts/argos-init.sh` (legacy v0.5 bootstrap).** An interactive shell script that fills the `{{PROJECT}}` / `{{PREFIX}}` / `{{DESC}}` / `{{DATE}}` placeholders in `argos/specs/**/*.template`, renames `EXAMPLE-001.md` → `<PREFIX>-001.md`, and drops an `argos/.initialized` sentinel so it won't run twice. It predates the CLI and does not install hooks or scaffold `conventions.md`, so prefer `argos init`.
+The CLI is stdlib-only Python (≥ 3.9) with zero third-party dependencies, so any of these work:
+
+```bash
+pipx install /path/to/argos       # isolated `argos` on your PATH
+pip install -e /path/to/argos     # editable install into your active environment
+python3 -m argos.cli <cmd>        # no install — works only with the argos clone as the current directory
+```
+
+Since `argos init` exists to scaffold *other* repos, install with pip or pipx so `argos` works from anywhere; the `python3 -m` form is the fallback for poking at the CLI from inside the clone.
+
+## Self-hosting: the two spec trees
+
+Argos runs on itself, so this repo carries two spec trees:
+
+- **`argos/specs/`** — the flat, living spec for the repo as a whole: `STATE.md`, `tickets/` (`ARG-*`), `decisions/`, `escalations/`. This is the same layout `argos init` scaffolds onto a foreign repo.
+- **`argos/specs/v1.0/`** — the versioned spec set for the Python CLI layer, with its own `STATE.md`, `tickets/` (`ARG1-*`), `agents/`, and `schemas/`.
+
+The CLI decides which tree bare commands operate on by probing for `argos/specs/v1.0/STATE.md` (`argos/cli/spec_paths.py`): when it exists — as in this repo — `orchestrate`, `queue`, etc. target the v1.0 tree and print a note on stderr; on an `init`-scaffolded repo they target the flat tree. `--state-file` / `--ticket-dir` always override.
+
+So, where does a new ticket go? **CLI-layer work** → `argos/specs/v1.0/tickets/ARG1-NNN-*.md`. **Anything else in this repo** (docs, scripts, tooling, process) → `argos/specs/tickets/ARG-NNN-*.md`.
 
 ## Upgrading from v0.4
 
@@ -201,9 +219,6 @@ your-project/
 │   │   └── templates/               # Scaffold templates, incl. conventions.md.template
 │   ├── conventions.md             # THIS repo's language/dependency/test rules (scaffolded by `argos init`)
 │   ├── scripts/
-│   │   ├── argos-init.sh             # Legacy interactive template bootstrap (predates the CLI)
-│   │   ├── argos-status.sh           # Inspect current state
-│   │   ├── argos-sync.sh             # Bidirectional GitHub Issues mirror
 │   │   ├── argos-chaos-probe.sh      # Mechanical chaos checks (called by watchdog)
 │   │   ├── argos-migrate-v0.5.sh     # v0.4 → v0.5 one shot migration
 │   │   └── hooks/                    # Git hooks (e.g. STATE.md append only commit hook)

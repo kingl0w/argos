@@ -1,7 +1,7 @@
 # Argos — State
 
-**Last updated:** 2026-07-01
-**Updated by:** human (hotfix batch — repo-consistency fixes, see Done this cycle)
+**Last updated:** 2026-07-12
+**Updated by:** human (audit cleanup batch — see Done this cycle)
 
 This file is the project's short-term memory. Every subagent reads it first. Only the verifier writes it during the loop; humans write it on out-of-loop edits.
 
@@ -13,8 +13,6 @@ v0.5 layout consolidation shipped (commit `330ec3f`); init guard regression fixe
 
 Tickets ready to be worked, in rough priority order. The planner picks the top one on `/next` unless told otherwise.
 
-- ARG-001 — argos-status.sh exits non-zero when ADRs are present (P2)
-- ARG-002 — Document self-hosting setup in README (P2)
 - ARG-003 — Ship editor config for visual collapse of harness-required directories (P2)
 - ARG-004 — Investigate relocatable config for Cursor / Codex / Gemini (P2)
 - ARG-005 — Scan-report generator for retrofit onto existing codebases (P2)
@@ -33,6 +31,13 @@ Tickets completed since the last cycle close. Cleared when you close a cycle (we
 - Init guard fix — removed redundant `STATE.md` heuristic; sentinel is sole source of truth for "already initialized" (commit `d409774`). Resolves the drift flagged after `7cd81f2`.
 - ARG1-050 (2026-04-26) — STATE.md append-mostly block schema doc + reference parser shipped; 13/13 pytest tests pass; 12 files added under `argos/specs/v1.0/schemas/` and `argos/cli/`.
 - ARG1-040 — Escalation file schema and `escalations/` directory contract verified 2026-04-26 (manual session, no worktree dispatch — v0.5 loop run on the v1.0 spec tree). New files: `argos/specs/v1.0/schemas/escalation.md`, `argos/specs/v1.0/schemas/examples/escalation-{blocking,malformed}.md`, `argos/specs/escalations/{.gitkeep,README.md}`, `argos/cli/{__init__.py,escalation_validator.py,escalation-validate,tests/__init__.py,tests/test_escalation_validator.py}`. 7 unit tests pass; all 6 acceptance criteria covered. 0 critical / 0 major / 0 minor findings. Decision: pass. Validator language is provisional Python pending ADR-001; stdlib only, no deps added.
+- **[2026-07-12] Audit cleanup batch** (human-directed, out-of-loop; explicit one-off per RULES §off-ticket work — full-repo audit findings; ARG-001 / ARG-002 closed as tickets)
+  - ARG-001 closed: premise no longer reproduced (accepted ADR-001 on disk → `argos-status.sh` exit 0). Disposition: deleted `argos-status.sh`, `argos-sync.sh`, `argos-init.sh` — superseded by `argos status` / `sync` / `init`. `install-hooks.sh` / `install-merge-driver.sh` retained (exercised by the shell test harnesses; installed at runtime). References updated in README, `.github/ISSUE_TEMPLATE/ticket.yml`, and `reconcile.py` docstrings.
+  - ARG-002 closed: README gained "Self-hosting: the two spec trees" and "Installing the CLI" sections (spec-tree probe rule, ticket placement, pipx / pip / `python3 -m` install paths).
+  - `argos orchestrate` now prints a stderr note when it auto-selects the versioned `argos/specs/v1.0/` tree (footgun: bare `orchestrate` in this repo never sees the flat-tree ARG-* queue); +2 tests in `test_orchestrate.py`.
+  - Fixed unclosed `Popen` pipes in `test_parallel_dispatch.py`; suite is clean under `-W error::ResourceWarning`.
+  - Untracked residue removed: `build/`, both `*.egg-info/`, `.pytest_cache/` dirs, stale `argos/specs/dispatch/EPIC-001/` (June dispatch locks/logs).
+  - Verification: unit suite 433/433 pass; `lint-imports argos/` clean; `argos status` all four checks pass; pre-commit hook tests 14/14; merge-driver tests 11/11; build-drift clean.
 - [2026-07-07] Off-ticket hotfix (explicit user request, outside the loop) — argos-graph viz now auto-centers: `fitView()` + initial origin-centering in `tools/argos-graph/argos_graph/viz_template.html` (force mode centers immediately and refits on simulation settle; hierarchy fits synchronously; auto-fit stops once the user pans/zooms). 22/22 argos-graph pytest tests pass. Also added `scripts/build-docs.sh` (regenerates `docs/graph.html` for the GitHub Pages showcase and injects a back-to-landing link; the tool template stays landing-page-agnostic).
 
 

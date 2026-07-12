@@ -14,7 +14,7 @@ body:
     id: ticket_id
     attributes:
       label: Ticket ID
-      description: Format is PREFIX-NNN (e.g. ACME-007). Match the prefix configured during `argos-init.sh`. Leave blank to let `/new-ticket` assign the next number.
+      description: Format is PREFIX-NNN (e.g. ACME-007). Match the prefix configured during `argos init`. Leave blank to let `/new-ticket` assign the next number.
       placeholder: ACME-001
     validations:
       required: false

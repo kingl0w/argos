@@ -242,6 +242,35 @@ class OrchestrateCLITests(unittest.TestCase):
             self.assertEqual(res.returncode, 0, msg=res.stderr)
             self.assertIn("queue empty", res.stdout)
 
+    def test_dry_run_v1_tree_autoselect_notes_on_stderr(self) -> None:
+        # ARG1-075 footgun guard: when bare `orchestrate` auto-selects the
+        # versioned argos/specs/v1.0/ tree, say so on stderr; a flat
+        # scaffolded tree and an explicit --state-file stay silent.
+        with tempfile.TemporaryDirectory() as td:
+            v1 = Path(td) / "argos" / "specs" / "v1.0"
+            v1.mkdir(parents=True)
+            _write_state(v1 / "STATE.md", _EMPTY_QUEUE_STATE)
+            res = _run_cli("orchestrate", "--dry-run", cwd=Path(td))
+            self.assertEqual(res.returncode, 0, msg=res.stderr)
+            self.assertIn("auto-selected versioned spec tree", res.stderr)
+            # Explicit --state-file targeting the same file: no note.
+            res = _run_cli(
+                "orchestrate", "--dry-run",
+                "--state-file", str(v1 / "STATE.md"),
+                cwd=Path(td),
+            )
+            self.assertEqual(res.returncode, 0, msg=res.stderr)
+            self.assertNotIn("auto-selected", res.stderr)
+
+    def test_dry_run_flat_tree_autoselect_is_silent(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            specs = Path(td) / "argos" / "specs"
+            specs.mkdir(parents=True)
+            _write_state(specs / "STATE.md", _EMPTY_QUEUE_STATE)
+            res = _run_cli("orchestrate", "--dry-run", cwd=Path(td))
+            self.assertEqual(res.returncode, 0, msg=res.stderr)
+            self.assertNotIn("auto-selected", res.stderr)
+
     def test_dry_run_missing_state_exits_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             missing = Path(td) / "does-not-exist" / "STATE.md"

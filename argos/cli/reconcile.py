@@ -5,7 +5,8 @@ canonical spec tree and the world around it:
 
 1. **ticket files ↔ GitHub Issues** (:func:`reconcile_issues`) — re-render the
    bodies of *existing* Issues from their ticket markdown. This is the v0.5
-   ``argos-sync.sh push`` behaviour exposed for local invocation. Issue
+   ``argos-sync.sh push`` behaviour (script since retired) exposed for local
+   invocation. Issue
    *creation* stays CI's job (a ticket-file Non-goal), so a ticket with no
    matching Issue is skipped, never created. This is the only phase that can
    touch the network; it is skipped wholesale when ``gh`` is unavailable or
@@ -435,7 +436,7 @@ class IssueBackend:
 class GhIssueBackend(IssueBackend):
     """``gh``-shelling implementation of :class:`IssueBackend`.
 
-    Mirrors ``argos/scripts/argos-sync.sh``: existing Issues are located by a
+    Mirrors the retired v0.5 ``argos-sync.sh``: existing Issues are located by a
     word-boundary match on the ticket id in the Issue title (label
     ``argos-ticket``) and their body/title re-rendered from the ticket file.
     """

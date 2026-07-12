@@ -233,6 +233,11 @@ def main(argv: list[str]) -> int:
     state_default, ticket_default = default_spec_paths()
     state_file = args.state_file or state_default
     ticket_dir = args.ticket_dir or ticket_default
+    if args.state_file is None and "v1.0" in state_default:
+        sys.stderr.write(
+            f"orchestrate: note: auto-selected versioned spec tree {state_default}; "
+            "pass --state-file to target another tree\n"
+        )
 
     try:
         ticket_ids = parse_queue_file(state_file)
