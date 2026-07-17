@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Argos — spec-driven orchestration for AI coding agents</title>
+<title>Argos: spec-driven orchestration for AI coding agents</title>
 <meta name="description" content="Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kingl0w.github.io/argos/">
-<meta property="og:title" content="Argos — spec-driven orchestration for AI coding agents">
+<meta property="og:title" content="Argos: spec-driven orchestration for AI coding agents">
 <meta property="og:description" content="Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.">
 <meta property="og:image" content="https://kingl0w.github.io/argos/social.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Argos — spec-driven orchestration for AI coding agents">
+<meta name="twitter:title" content="Argos: spec-driven orchestration for AI coding agents">
 <meta name="twitter:description" content="Queue a ticket. Argos builds and tests it in an isolated worktree, pushes a branch, and you merge. That's the whole loop.">
 <meta name="twitter:image" content="https://kingl0w.github.io/argos/social.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -138,7 +138,7 @@
   }
   @keyframes blink { 50% { opacity: 0; } }
 
-  /* loop diagram — html/css, no ascii */
+  /* loop diagram: html/css, no ascii */
   .flow { margin-top: 22px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: clamp(20px, 4vw, 36px); }
   .flow-step { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .fbox {
@@ -254,7 +254,7 @@
   <p class="pitch">
     Queue a ticket. Argos plans it, writes the code and tests in an
     <b>isolated git worktree</b>, verifies against acceptance criteria,
-    and <b>pushes a branch</b>. It never merges — you do.
+    and <b>pushes a branch</b>. It never merges; you do.
     Spec-driven outer-loop orchestration for AI coding agents:
     a scaffold for Claude&nbsp;Code, Cursor, Codex&nbsp;CLI, and Gemini&nbsp;CLI,
     plus a <b>stdlib-only Python CLI</b> that runs the whole loop headlessly.
@@ -266,15 +266,15 @@
 </section>
 
 <section id="demo">
-  <div class="kicker">Demo — real sessions</div>
-  <p class="section-note">Pick a scenario. Every output line was captured from real <code class="mono">argos</code> runs against this repository — the drift scenario is staged, but the tool output is genuine.</p>
+  <div class="kicker">Demo · real sessions</div>
+  <p class="section-note">Pick a scenario. Every output line was captured from real <code class="mono">argos</code> runs against this repository; the drift scenario is staged, but the tool output is genuine.</p>
   <div class="term-tabs" id="tabs" role="tablist"></div>
   <div class="term">
     <div class="term-bar">
       <span class="dot" style="background:#e15759"></span>
       <span class="dot" style="background:#f28e2b"></span>
       <span class="dot" style="background:#59a14f"></span>
-      <span class="title">argos — ~/projects/argos</span>
+      <span class="title">argos · ~/projects/argos</span>
       <button id="replay" type="button">↻ replay</button>
     </div>
     <div class="term-body" id="term"></div>
@@ -287,7 +287,7 @@
     <div class="flow-step">
       <div class="fbox specs mono">argos/specs/ <small>PRD · ARCHITECTURE · STATE · tickets · ADRs · conventions</small></div>
       <div class="fdown"><span class="lbl mono">argos queue add</span><span class="head"></span></div>
-      <div class="fbox">orchestrator <small>reads the queue, runs independence detection, dispatches a batch — one git worktree per ticket, parallel where independent</small></div>
+      <div class="fbox">orchestrator <small>reads the queue, runs independence detection, dispatches a batch: one git worktree per ticket, parallel where independent</small></div>
       <div class="fdown"><span class="head"></span></div>
     </div>
     <div class="pipeline">
@@ -300,8 +300,8 @@
       <div class="agent">verifier</div>
     </div>
     <div class="outcomes">
-      <div class="outcome"><span class="tag pass">pass</span><span>the verifier pushes a branch and writes <code>STATE.md</code> — the operator reviews and merges. Argos never merges on its own.</span></div>
-      <div class="outcome"><span class="tag block">CHAOS_BLOCKED</span><span>the watchdog caught the coder drifting from the plan — the loop halts and hands control to the operator (<code>/steer</code>).</span></div>
+      <div class="outcome"><span class="tag pass">pass</span><span>the verifier pushes a branch and writes <code>STATE.md</code>; the operator reviews and merges. Argos never merges on its own.</span></div>
+      <div class="outcome"><span class="tag block">CHAOS_BLOCKED</span><span>the watchdog caught the coder drifting from the plan, so the loop halts and hands control to the operator (<code>/steer</code>).</span></div>
       <div class="outcome"><span class="tag steer">autosteer</span><span>a flagged plan retries once, planner&nbsp;→&nbsp;coder. The verifier never retries: a failed verify is a failed ticket, not a loop.</span></div>
     </div>
   </div>
@@ -309,13 +309,13 @@
 
 <section>
   <div class="kicker">Run it on your repo</div>
-  <p class="section-note">Argos works on any codebase — your repo declares its own language, dependencies, and test command in <code class="mono">argos/conventions.md</code>, and every dispatched session builds to those rules.</p>
+  <p class="section-note">Argos works on any codebase: your repo declares its own language, dependencies, and test command in <code class="mono">argos/conventions.md</code>, and every dispatched session builds to those rules.</p>
   <div class="quick"><pre><span class="cmd">git clone https://github.com/kingl0w/argos.git</span>
 <span class="cmd">cd your-repo</span>
 <span class="cmd">argos init</span>            <span class="cmt"># scaffold argos/specs/, write conventions.md, install hooks</span>
 <span class="cmd">$EDITOR argos/conventions.md</span>   <span class="cmt"># your language, deps, test command</span>
 <span class="cmd">argos queue add ABC-001</span>        <span class="cmt"># queue a ticket you wrote under argos/specs/</span>
-<span class="cmd">argos orchestrate</span>     <span class="cmt"># builds, tests, verifies, pushes a branch — you merge</span></pre></div>
+<span class="cmd">argos orchestrate</span>     <span class="cmt"># builds, tests, verifies, pushes a branch; you merge</span></pre></div>
 </section>
 
 <section class="tenets">
@@ -324,7 +324,7 @@
     <li>
       <div>
         <h2>Specs are the source of truth</h2>
-        <p>Markdown specs — PRD, architecture, tickets, ADRs, <code>STATE.md</code> —
+        <p>Markdown specs (PRD, architecture, tickets, ADRs, <code>STATE.md</code>)
         drive every session. Hooks keep them honest: <code>STATE.md</code> is
         append-only and <code>argos status</code> fails when the specs contradict
         themselves. The live graph above is projected straight from them.</p>
@@ -344,7 +344,7 @@
         <h2>The human owns the merge</h2>
         <p>Sessions run in parallel worktrees when independence detection clears
         them, and every one ends the same way: a pushed branch, never a silent
-        merge. Ambiguity escalates to the operator — there is no silent
+        merge. Ambiguity escalates to the operator; there is no silent
         recovery.</p>
       </div>
     </li>
@@ -365,11 +365,11 @@ const SCENARIOS = {
   "Queue & dispatch": [
     { note: "check the specs are internally consistent before doing anything" },
     { cmd: "argos status",
-      out: [["ok", "argos status: ok — STATE.md, config, escalations, and git are mutually consistent."]] },
+      out: [["ok", "argos status: ok. STATE.md, config, escalations, and git are mutually consistent."]] },
     { note: "queue a ticket you wrote under argos/specs/tickets/" },
     { cmd: "argos queue add ARG-005",
       out: [["", "queued ARG-005"]] },
-    { note: "preview the dispatch batch — no worktrees created yet" },
+    { note: "preview the dispatch batch; no worktrees created yet" },
     { cmd: "argos orchestrate --dry-run",
       out: [["", "ARG-001"], ["", "ARG-002"], ["", "ARG-003"], ["", "ARG-004"], ["", "ARG-005"]] },
     { note: "drop --dry-run to dispatch for real: one isolated worktree per ticket,\neach session plans, codes, verifies, and pushes a branch for your review" },
@@ -378,7 +378,7 @@ const SCENARIOS = {
     { note: "can these two tickets run at the same time? argos reads each\nticket's planned files_touched and checks for overlap" },
     { cmd: "argos independence ARG1-021 ARG1-022",
       out: [["ok", "independent: ARG1-021 ARG1-022"], ["", "group 1: ARG1-021 ARG1-022"]] },
-    { note: "these two both touch the orchestrator — argos refuses to parallelize" },
+    { note: "these two both touch the orchestrator, so argos refuses to parallelize" },
     { cmd: "argos independence ARG1-013 ARG1-022",
       out: [["warn", "dependent: ARG1-013 ARG1-022 (shared file: argos/cli/commands/orchestrate.py, argos/cli/orchestrator/dispatch.py)"],
             ["", "group 1: ARG1-013"], ["", "group 2: ARG1-022"]] },
@@ -387,13 +387,13 @@ const SCENARIOS = {
       out: [["", "branch: argos/ARG-002"], ["", "worktree: ~/projects/argos/.argos/worktrees/ARG-002"]] },
   ],
   "Drift caught": [
-    { note: "mid-session, the watchdog diffs the coder's changes against the plan.\nhere it caught an unplanned dependency — the loop halts, nothing merges" },
+    { note: "mid-session, the watchdog diffs the coder's changes against the plan.\nhere it caught an unplanned dependency: the loop halts, nothing merges" },
     { cmd: "argos escalate --ticket ARG-005 --severity blocking --raised-by watchdog --body \"CHAOS_BLOCKED: coder added dependency 'requests' not present in the plan\"",
       out: [["", "argos/specs/escalations/ARG-005-2026-07-07T22-25-59Z.md"]] },
-    { note: "escalations queue up for the operator — nothing proceeds on its own" },
+    { note: "escalations queue up for the operator; nothing proceeds on its own" },
     { cmd: "argos attend --list",
       out: [["warn", "ARG-005  2026-07-07T22:25:59Z  blocking  ARG-005-2026-07-07T22-25-59Z.md"]] },
-    { note: "argos attend (without --list) walks you through each escalation and\nrecords your decision into the ticket — the human ratifies every ambiguity" },
+    { note: "argos attend (without --list) walks you through each escalation and\nrecords your decision into the ticket; the human ratifies every ambiguity" },
   ],
 };
 
